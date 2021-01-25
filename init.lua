@@ -36,34 +36,6 @@ local history = {
     end 
 }
 
--- namespace wrapper for per-player tool-specific settings
-local function ToolSettings(player, tool_name)
-    return {
-        _meta = player:get_meta(),
-        _prefix = "terraform."..tool_name..".",
-
-        -- build full meta key from setting key
-        _k  = function(self, k)
-            return self._prefix..k
-        end,
-
-        -- public methods
-        --
-        get_int = function(self, k)
-            return self._meta:get_int(self:_k(k))
-        end,
-        set_int = function(self, k, v)
-            self._meta:set_int(self:_k(k), v)
-        end,
-        get_string = function(self, k)
-            return self._meta:get_string(self:_k(k))
-        end,
-        set_string = function(Self, k, v)
-            self._meta:set_string(self:_k(k), v)
-        end
-    }
-end
-
 -- public module API
 terraform = {
     _tools = {},
@@ -84,10 +56,10 @@ terraform = {
             liquids_pointable = true,
             node_dig_prediction = "",
             on_use = function(itemstack, player, target)
-                terraform:show_config(player, spec.tool_name)
+                terraform:show_config(player, spec.tool_name, itemstack)
             end,
             on_place = function(itemstack, player, target)
-                spec:execute(player, target, ToolSettings(player, spec.tool_name))
+                spec:execute(player, target, itemstack:get_meta())
             end
         })
     end,
@@ -99,8 +71,9 @@ terraform = {
             return
         end
 
-        self._latest_form = { id = "terraform:props:"..tool_name, tool_name = tool_name }
-        local formspec = self._tools[tool_name]:render_config(player, ToolSettings(player, tool_name))
+        local itemstack = player:get_wielded_item()
+        self._latest_form = { id = "terraform:props:"..tool_name, tool_name = tool_name}
+        local formspec = self._tools[tool_name]:render_config(player, itemstack:get_meta())
         minetest.show_formspec(player:get_player_name(), terraform._latest_form.id, formspec)
     end
 }
@@ -108,12 +81,19 @@ terraform = {
 -- Handle input from forms
 minetest.register_on_player_receive_fields(function(player, formname, fields)
     if terraform._latest_form and formname == terraform._latest_form.id then
+        if fields.quit then
+            terraform._latest_form = nil
+            return
+        end
         local tool_name = terraform._latest_form.tool_name
         if not terraform._tools[tool_name].config_input then
             return
         end
-        if terraform._tools[tool_name]:config_input(player, fields, ToolSettings(player, tool_name)) then
-            terraform:show_config(player, tool_name)
+        local itemstack = player:get_wielded_item()
+        local reload = terraform._tools[tool_name]:config_input(player, fields, itemstack:get_meta())
+        player:set_wielded_item(itemstack)
+        if reload then
+            terraform:show_config(player, tool_name, itemstack)
         end
     end
 end)
