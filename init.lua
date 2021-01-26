@@ -104,20 +104,26 @@ terraform:register_tool("sculptor", {
     short_description = "Sculptor",
     inventory_image = "terraform_tool_brush.png",
     render_config = function(self, player, settings)
-        return 
+        local function selection(texture, selected)
+            if selected then return texture.."^terraform_selection.png" end
+            return texture
+        end
+
+        spec = 
             "formspec_version[3]"..
             "size[13,9]"..
             "position[0.1,0.15]"..
             "anchor[0,0]"..
             "no_prepend[]"..
+
             "container[0,0]".. -- shape
-            "label[0,0; Shape]"..
-            "checkbox[0,1;sphere;( );false]"..
-            "checkbox[2,1;cube;[ ];false]"..
-            "checkbox[0,2;hollow;Hollow;false]"..
+            "label[0.2,0.5; Shape:]"..
+            "image_button[0,1;1,1;"..selection("terraform_brush_sphere.png",settings:get_string("brush") == "sphere")..";brush_sphere;]"..
+            "image_button[1,1;1,1;"..selection("terraform_brush_cube.png", settings:get_string("brush") == "cube")..";brush_cube;]"..
             "container_end[]"..
+
             "container[0,3]".. -- size
-            "field[3,0;2,1;size;Size;3]"..
+            "field[3,0;2,1;size;Size;"..(settings:get_int("size") or 3).."]"..
             "container_end[]"..
             "container[4,0]".. -- creative
             "label[0,0; All items]"..
@@ -132,14 +138,24 @@ terraform:register_tool("sculptor", {
             "label[0,0; Mask]"..
             "list[current_player;main;0,1;10,1]"..
             "container_end[]"
+        return spec
     end,
     config_input = function(self, player, fields, settings)
-        if fields.radius ~= nil then
-            minetest.chat_send_all("input: "..fields.radius)
-            local event = minetest.explode_scrollbar_event(fields.radius)
-            settings:set_int("radius", math.floor(event.value * 30 / 1000))
-            return true
+        minetest.chat_send_all("fields: "..dump(fields))
+        local refresh = false
+        if fields.size ~= nil then
+            minetest.chat_send_all("input: "..fields.size)
+            settings:set_int("size", tonumber(fields.size))
         end
+        if fields.brush_sphere ~= nil then
+            settings:set_string("brush", "sphere")
+            refresh = true
+        end
+        if fields.brush_cube ~= nil then
+            settings:set_string("brush", "cube")
+            refresh = true
+        end
+        return refresh
     end,
     execute = function(self, player, target, settings)
         local target_pos = minetest.get_pointed_thing_position(target)
@@ -147,9 +163,10 @@ terraform:register_tool("sculptor", {
             return
         end
 
-        local radius = settings:get_int("radius") or 3
-        local minp = { x = target_pos.x - radius, y = target_pos.y - radius, z = target_pos.z - radius }
-        local maxp = { x = target_pos.x + radius, y = target_pos.y + radius, z = target_pos.z + radius }
+        local size = settings:get_int("size") or 3
+        local size_3d = { x = size, y = size, z = size }
+        local minp = { x = target_pos.x - size_3d.x, y = target_pos.y - size_3d.y, z = target_pos.z - size_3d.z }
+        local maxp = { x = target_pos.x + size_3d.x, y = target_pos.y + size_3d.y, z = target_pos.z + size_3d.z }
         local v = minetest.get_voxel_manip()
         local minv, maxv = v:read_from_map(minp, maxp)
         local a = VoxelArea:new({MinEdge = minv, MaxEdge = maxv })
@@ -159,16 +176,33 @@ terraform:register_tool("sculptor", {
             air = minetest.CONTENT_AIR,
             solid = data[a:index(target_pos.x, target_pos.y, target_pos.z)]
         }
-        local sqr = radius * radius
-        for i in a:iter(minp.x, minp.y, minp.z, maxp.x, maxp.y, maxp.z) do
-            local ip = a:position(i)
-            local delta = { x = ip.x - target_pos.x, y = ip.y - target_pos.y, z = ip.z - target_pos.z }
-            delta.x = delta.x * delta.x delta.y = delta.y * delta.y delta.z = delta.z * delta.z
 
-            if sqr > delta.x + delta.y + delta.z and data[i] == cid.air then
-                data[i] = cid.solid
-            end
-        end
+        local brushes = {
+            cube = function()
+                for i in a:iter(minp.x, minp.y, minp.z, maxp.x, maxp.y, maxp.z) do
+                    data[i] = cid.solid
+                end
+            end,
+            sphere = function()
+                for i in a:iter(minp.x, minp.y, minp.z, maxp.x, maxp.y, maxp.z) do
+                    local ip = a:position(i)
+                    local epsilon = 0.3
+                    local delta = { x = ip.x - target_pos.x, y = ip.y - target_pos.y, z = ip.z - target_pos.z }
+                    delta = { x = delta.x / (size_3d.x + epsilon), y = delta.y / (size_3d.y + epsilon), z = delta.z / (size_3d.z + epsilon) }
+                    delta = { x = delta.x^2, y = delta.y^2, z = delta.z^2 }
+
+                    if 1 > delta.x + delta.y + delta.z and data[i] == cid.air then
+                        data[i] = cid.solid
+                    end
+                end
+            end,
+        }
+
+        local brush = settings:get_string("brush") or "sphere"
+        if not brushes[brush] then brush = "sphere" end
+
+        brushes[brush]()
+
         v:set_data(data)
         v:write_to_map()
     end
