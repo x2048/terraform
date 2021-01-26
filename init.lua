@@ -106,14 +106,32 @@ terraform:register_tool("sculptor", {
     render_config = function(self, player, settings)
         return 
             "formspec_version[3]"..
-            "size[8,7.5]"..
+            "size[13,9]"..
             "position[0.1,0.15]"..
             "anchor[0,0]"..
             "no_prepend[]"..
-            "container[0,0]"..
+            "container[0,0]".. -- shape
+            "label[0,0; Shape]"..
+            "checkbox[0,1;sphere;( );false]"..
+            "checkbox[2,1;cube;[ ];false]"..
+            "checkbox[0,2;hollow;Hollow;false]"..
             "container_end[]"..
-            "label[1, 1; Radius:"..tostring(settings:get_int("radius")).."]"..
-            "scrollbar[1,3;4,1;h;radius;"..tostring(settings:get_int("radius")*1000/30).."]"
+            "container[0,3]".. -- size
+            "field[3,0;2,1;size;Size;3]"..
+            "container_end[]"..
+            "container[4,0]".. -- creative
+            "label[0,0; All items]"..
+            "list[current_player;creative;0,1;9,4]"..
+            "container_end[]"..
+            "container[4,5]".. -- material
+            "label[0,0; Materials]"..
+            "checkbox[4,0;air;Air;false]"..
+            "list[current_player;main;0,1;10,1]"..
+            "container_end[]"..
+            "container[4,7]".. -- Mask
+            "label[0,0; Mask]"..
+            "list[current_player;main;0,1;10,1]"..
+            "container_end[]"
     end,
     config_input = function(self, player, fields, settings)
         if fields.radius ~= nil then
