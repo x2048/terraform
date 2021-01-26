@@ -81,17 +81,20 @@ terraform = {
 -- Handle input from forms
 minetest.register_on_player_receive_fields(function(player, formname, fields)
     if terraform._latest_form and formname == terraform._latest_form.id then
-        if fields.quit then
-            terraform._latest_form = nil
-            return
-        end
         local tool_name = terraform._latest_form.tool_name
         if not terraform._tools[tool_name].config_input then
             return
         end
+
         local itemstack = player:get_wielded_item()
         local reload = terraform._tools[tool_name]:config_input(player, fields, itemstack:get_meta())
         player:set_wielded_item(itemstack)
+
+        if fields.quit then
+            terraform._latest_form = nil
+            return
+        end
+
         if reload then
             terraform:show_config(player, tool_name, itemstack)
         end
