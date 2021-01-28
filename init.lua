@@ -215,6 +215,7 @@ terraform:register_tool("brush", {
 
             "container[0.5,3]".. -- size
             "field[0,0;2,1;size;Size;"..(settings:get_int("size") or 3).."]"..
+            "field_close_on_enter[size;false]"..
             "container_end[]"..
 
             "container[4,0.5]".. -- creative
@@ -241,9 +242,9 @@ terraform:register_tool("brush", {
     config_input = function(self, player, fields, settings)
         minetest.chat_send_all("fields: "..dump(fields))
         local refresh = false
-        if fields.size ~= nil then
+        if tonumber(fields.size) ~= nil then
             minetest.chat_send_all("input: "..fields.size)
-            settings:set_int("size", tonumber(fields.size))
+            settings:set_int("size", math.min(math.max(tonumber(fields.size), 0), 10))
         end
         if fields.brush_sphere ~= nil then
             settings:set_string("brush", "sphere")
@@ -267,29 +268,62 @@ terraform:register_tool("brush", {
     end,
 
     execute = function(self, player, target, settings)
+        -- Get position
         local target_pos = minetest.get_pointed_thing_position(target)
         if not target_pos then
             return
         end
 
+        -- Define size in 3d
         local size = settings:get_int("size") or 3
         local size_3d = { x = size, y = size, z = size }
+
+        -- Define working area and load state
         local minp = { x = target_pos.x - size_3d.x, y = target_pos.y - size_3d.y, z = target_pos.z - size_3d.z }
         local maxp = { x = target_pos.x + size_3d.x, y = target_pos.y + size_3d.y, z = target_pos.z + size_3d.z }
         local v = minetest.get_voxel_manip()
         local minv, maxv = v:read_from_map(minp, maxp)
         local a = VoxelArea:new({MinEdge = minv, MaxEdge = maxv })
+
+        -- Get data and capture history
         local data  = v:get_data()
         history:capture(data, a, minp, maxp)
-        local cid = {
-            air = minetest.CONTENT_AIR,
-            solid = data[a:index(target_pos.x, target_pos.y, target_pos.z)]
-        }
+
+        -- Prepare Paint
+        local paint = {}
+        for i,v in ipairs(terraform.string_to_list(settings:get_string("paint"), 10)) do
+            if v ~= "" then
+                table.insert(paint, minetest.get_content_id(v))
+            end
+        end
+        if #paint == 0 then
+            table.insert(paint, minetest.CONTENT_AIR)
+        end
+
+        local function get_paint()
+            return paint[math.random(1, #paint)]
+        end
+
+        -- Prepare Mask
+        local mask = {}
+        for i,v in ipairs(terraform.string_to_list(settings:get_string("mask"), 10)) do
+            if v ~= "" then
+                table.insert(mask, minetest.get_content_id(v))
+            end
+        end
+
+        local function in_mask(cid)
+            if #mask == 0 then return true end
+            for i,v in ipairs(mask) do if v == cid then return true end end
+            return false
+        end
 
         local brushes = {
             cube = function()
                 for i in a:iter(minp.x, minp.y, minp.z, maxp.x, maxp.y, maxp.z) do
-                    data[i] = cid.solid
+                    if in_mask(data[i]) then
+                        data[i] = get_paint()
+                    end
                 end
             end,
             sphere = function()
@@ -300,8 +334,8 @@ terraform:register_tool("brush", {
                     delta = { x = delta.x / (size_3d.x + epsilon), y = delta.y / (size_3d.y + epsilon), z = delta.z / (size_3d.z + epsilon) }
                     delta = { x = delta.x^2, y = delta.y^2, z = delta.z^2 }
 
-                    if 1 > delta.x + delta.y + delta.z and data[i] == cid.air then
-                        data[i] = cid.solid
+                    if 1 > delta.x + delta.y + delta.z and in_mask(data[i]) then
+                        data[i] = get_paint()
                     end
                 end
             end,
