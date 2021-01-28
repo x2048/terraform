@@ -75,6 +75,39 @@ terraform = {
         self._latest_form = { id = "terraform:props:"..tool_name, tool_name = tool_name}
         local formspec = self._tools[tool_name]:render_config(player, itemstack:get_meta())
         minetest.show_formspec(player:get_player_name(), terraform._latest_form.id, formspec)
+    end,
+
+    get_inventory = function(player)
+        return minetest.get_inventory({type = "detached", name = "terraform."..player:get_player_name()})
+    end,
+
+    -- Helpers for storing inventory into settings
+    string_to_list = function(s,size)
+        -- Accept: a comma-separated list of content names and desired list size
+        -- Return: a table with item names, compatible with inventory lists
+        local result = {}
+        for part in s:gmatch("[^,]+") do
+            table.insert(result, part)
+        end
+        while #result < size do table.insert(result, "") end
+        minetest.chat_send_all("string_to_list "..s.." "..dump(result))
+        return result
+    end,
+    list_to_string = function(list)
+        -- Accept: result of InvRef:get_list
+        -- Retrun: a comma-separated list of items
+        local result = ""
+        for k,v in pairs(list) do
+            if v.get_name ~= nil then v = v:get_name() end -- ItemStack to string
+            if v ~= "" then
+                if string.len(result) > 0 then
+                    result = result..","
+                end
+                result = result..v
+            end
+        end
+        minetest.chat_send_all("list_to_string "..dump(list).." "..result)
+        return result
     end
 }
 
@@ -101,48 +134,110 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
     end
 end)
 
+-- Inventory
+minetest.register_on_joinplayer(function(player)
+    minetest.create_detached_inventory("terraform."..player:get_player_name(), {
+        allow_move = function(a,b,c)
+            minetest.chat_send_all("allow_move "..a.." "..b.." "..c)
+            return 0
+        end,
+        allow_take = function(a,b,c)
+            minetest.chat_send_all("allow_take "..a.." "..b.." "..c)
+            return 0
+        end,
+        allow_put = function(a,b,c)
+            minetest.chat_send_all("allow_put "..a.." "..b.." "..c)
+            return 0
+        end
+    })
+end)
+
+minetest.register_on_leaveplayer(function(player)
+    minetest.remove_detached_inventory("terraform."..player:get_player_name())
+end)
+
+-- Tools
+
+-- Brush
 --
-terraform:register_tool("sculptor", {
-    description = "Sculptor\n\nAdds or removes shapes to the world",
-    short_description = "Sculptor",
+terraform:register_tool("brush", {
+    description = "Brush\n\nPaints the world with broad strokes",
+    short_description = "Brush",
     inventory_image = "terraform_tool_brush.png",
+
     render_config = function(self, player, settings)
         local function selection(texture, selected)
             if selected then return texture.."^terraform_selection.png" end
             return texture
         end
 
+        local inventory = minetest.create_detached_inventory("terraform."..player:get_player_name(), {
+            allow_move = function(inv,source,sindex,dest,dindex,count)
+                if source == "palette" and dest ~= "palette" then
+                    inv:set_stack(dest,dindex, inv:get_stack(source, sindex))
+                elseif dest == "palette" and source ~= "palette" then
+                    inv:set_stack(source, sindex, "")
+                end
+                return 0
+            end
+        })
+
+        local all_nodes = {}
+        local count = 0
+        local pattern = settings:get_string("search")
+        for k,v in pairs(minetest.registered_nodes) do
+            if not pattern or string.find(k, pattern) ~= nil then
+                table.insert(all_nodes, k)
+                count = count + 1
+            end
+        end
+        while count < 40 do table.insert(all_nodes, "") count = count + 1 end
+
+        local paint = terraform.string_to_list(settings:get_string("paint"), 10)
+        local mask = terraform.string_to_list(settings:get_string("mask"), 10)
+
+        inventory:set_list("palette", all_nodes)
+        inventory:set_list("paint", paint)
+        inventory:set_list("mask", mask)
+
         spec = 
             "formspec_version[3]"..
-            "size[13,9]"..
+            "size[15,11]"..
             "position[0.1,0.15]"..
             "anchor[0,0]"..
             "no_prepend[]"..
 
-            "container[0,0]".. -- shape
+            "container[0.5,0.5]".. -- shape
             "label[0.2,0.5; Shape:]"..
             "image_button[0,1;1,1;"..selection("terraform_brush_sphere.png",settings:get_string("brush") == "sphere")..";brush_sphere;]"..
             "image_button[1,1;1,1;"..selection("terraform_brush_cube.png", settings:get_string("brush") == "cube")..";brush_cube;]"..
             "container_end[]"..
 
-            "container[0,3]".. -- size
-            "field[3,0;2,1;size;Size;"..(settings:get_int("size") or 3).."]"..
+            "container[0.5,3]".. -- size
+            "field[0,0;2,1;size;Size;"..(settings:get_int("size") or 3).."]"..
             "container_end[]"..
-            "container[4,0]".. -- creative
-            "label[0,0; All items]"..
-            "list[current_player;creative;0,1;9,4]"..
+
+            "container[4,0.5]".. -- creative
+            "label[0,0.5; All items]"..
+            "label[4,0.5; Search:]"..
+            "field[5.5,0;2,1;search;;"..(settings:get_string("search") or "").."]"..
+            "field_close_on_enter[search;false]"..
+            "list[detached:terraform."..player:get_player_name()..";palette;0,1;10,3]"..
             "container_end[]"..
-            "container[4,5]".. -- material
-            "label[0,0; Materials]"..
-            "checkbox[4,0;air;Air;false]"..
-            "list[current_player;main;0,1;10,1]"..
+
+            "container[4,6]".. -- paint
+            "label[0,0.5; Paint]"..
+            "checkbox[4,0.5;air;Air;false]"..
+            "list[detached:terraform."..player:get_player_name()..";paint;0,1;10,1]"..
             "container_end[]"..
-            "container[4,7]".. -- Mask
-            "label[0,0; Mask]"..
-            "list[current_player;main;0,1;10,1]"..
+
+            "container[4,8]".. -- Mask
+            "label[0,0.5; Mask]"..
+            "list[detached:terraform."..player:get_player_name()..";mask;0,1;10,1]"..
             "container_end[]"
         return spec
     end,
+
     config_input = function(self, player, fields, settings)
         minetest.chat_send_all("fields: "..dump(fields))
         local refresh = false
@@ -158,8 +253,19 @@ terraform:register_tool("sculptor", {
             settings:set_string("brush", "cube")
             refresh = true
         end
+        if fields.search ~= nil then
+            settings:set_string("search", fields.search)
+            refresh = true
+        end
+        local inv = terraform.get_inventory(player)
+        if inv ~= nil then
+            settings:set_string("paint", terraform.list_to_string(inv:get_list("paint")))
+            settings:set_string("mask", terraform.list_to_string(inv:get_list("mask")))
+        end
+
         return refresh
     end,
+
     execute = function(self, player, target, settings)
         local target_pos = minetest.get_pointed_thing_position(target)
         if not target_pos then
@@ -210,6 +316,7 @@ terraform:register_tool("sculptor", {
         v:write_to_map()
     end
 })
+minetest.register_alias("terraform:sculptor", "terraform:brush")
 
 terraform:register_tool("undo", {
     description = "Terraform Undo\n\nUndoes changes to the world",
