@@ -268,6 +268,7 @@ terraform:register_tool("brush", {
     end,
 
     execute = function(self, player, target, settings)
+
         -- Get position
         local target_pos = minetest.get_pointed_thing_position(target)
         if not target_pos then
@@ -276,11 +277,15 @@ terraform:register_tool("brush", {
 
         -- Define size in 3d
         local size = settings:get_int("size") or 3
-        local size_3d = { x = size, y = size, z = size }
+        local size_3d = vector.new(size, size, size)
+
+        -- Pick a brush
+        local brush_name = settings:get_string("brush") or "sphere"
+        if not self.brushes[brush_name] then brush_name = "sphere" end
+        local brush = self.brushes[brush_name]()
 
         -- Define working area and load state
-        local minp = { x = target_pos.x - size_3d.x, y = target_pos.y - size_3d.y, z = target_pos.z - size_3d.z }
-        local maxp = { x = target_pos.x + size_3d.x, y = target_pos.y + size_3d.y, z = target_pos.z + size_3d.z }
+        local minp,maxp = brush:get_bounds(player, target_pos, size_3d)
         local v = minetest.get_voxel_manip()
         local minv, maxv = v:read_from_map(minp, maxp)
         local a = VoxelArea:new({MinEdge = minv, MaxEdge = maxv })
@@ -288,6 +293,12 @@ terraform:register_tool("brush", {
         -- Get data and capture history
         local data  = v:get_data()
         history:capture(data, a, minp, maxp)
+
+        -- Set up context
+        local ctx = {
+            size_3d = size_3d,
+            player = player
+        }
 
         -- Prepare Paint
         local paint = {}
@@ -300,7 +311,7 @@ terraform:register_tool("brush", {
             table.insert(paint, minetest.CONTENT_AIR)
         end
 
-        local function get_paint()
+        ctx.get_paint = function()
             return paint[math.random(1, #paint)]
         end
 
@@ -312,43 +323,58 @@ terraform:register_tool("brush", {
             end
         end
 
-        local function in_mask(cid)
+        ctx.in_mask = function(cid)
             if #mask == 0 then return true end
             for i,v in ipairs(mask) do if v == cid then return true end end
             return false
         end
 
-        local brushes = {
-            cube = function()
-                for i in a:iter(minp.x, minp.y, minp.z, maxp.x, maxp.y, maxp.z) do
-                    if in_mask(data[i]) then
-                        data[i] = get_paint()
-                    end
-                end
-            end,
-            sphere = function()
-                for i in a:iter(minp.x, minp.y, minp.z, maxp.x, maxp.y, maxp.z) do
-                    local ip = a:position(i)
-                    local epsilon = 0.3
-                    local delta = { x = ip.x - target_pos.x, y = ip.y - target_pos.y, z = ip.z - target_pos.z }
-                    delta = { x = delta.x / (size_3d.x + epsilon), y = delta.y / (size_3d.y + epsilon), z = delta.z / (size_3d.z + epsilon) }
-                    delta = { x = delta.x^2, y = delta.y^2, z = delta.z^2 }
+        -- Paint
+        brush:paint(data, a, target_pos, minp, maxp, ctx)
 
-                    if 1 > delta.x + delta.y + delta.z and in_mask(data[i]) then
-                        data[i] = get_paint()
-                    end
-                end
-            end,
-        }
-
-        local brush = settings:get_string("brush") or "sphere"
-        if not brushes[brush] then brush = "sphere" end
-
-        brushes[brush]()
-
+        -- Save back to map
         v:set_data(data)
         v:write_to_map()
-    end
+    end,
+
+
+    -- Definition of brushes
+    brushes = {
+        cube = function()
+            return {
+                get_bounds = function(self, player, target_pos, size_3d)
+                    return vector.subtract(target_pos, size_3d), vector.add(target_pos, size_3d)
+                end,
+                paint = function(self, data, a, target_pos, minp, maxp, ctx)
+                    for i in a:iter(minp.x, minp.y, minp.z, maxp.x, maxp.y, maxp.z) do
+                        if ctx.in_mask(data[i]) then
+                            data[i] = ctx.get_paint()
+                        end
+                    end
+                end,
+            }
+        end,
+        sphere = function()
+            return {
+                get_bounds = function(self, player, target_pos, size_3d)
+                    return vector.subtract(target_pos, size_3d), vector.add(target_pos, size_3d)
+                end,
+                paint = function(self, data, a, target_pos, minp, maxp, ctx)
+                    for i in a:iter(minp.x, minp.y, minp.z, maxp.x, maxp.y, maxp.z) do
+                        local ip = a:position(i)
+                        local epsilon = 0.3
+                        local delta = { x = ip.x - target_pos.x, y = ip.y - target_pos.y, z = ip.z - target_pos.z }
+                        delta = { x = delta.x / (ctx.size_3d.x + epsilon), y = delta.y / (ctx.size_3d.y + epsilon), z = delta.z / (ctx.size_3d.z + epsilon) }
+                        delta = { x = delta.x^2, y = delta.y^2, z = delta.z^2 }
+
+                        if 1 > delta.x + delta.y + delta.z and ctx.in_mask(data[i]) then
+                            data[i] = ctx.get_paint()
+                        end
+                    end
+                end,
+            }
+        end
+    }
 })
 minetest.register_alias("terraform:sculptor", "terraform:brush")
 
