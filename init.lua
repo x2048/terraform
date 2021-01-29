@@ -202,7 +202,7 @@ terraform:register_tool("brush", {
 
         spec = 
             "formspec_version[3]"..
-            "size[15,11]"..
+            "size[17,11]"..
             "position[0.1,0.15]"..
             "anchor[0,0]"..
             "no_prepend[]"..
