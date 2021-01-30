@@ -11,7 +11,6 @@ local history = {
         end
         local op = {minp = minp, maxp = maxp, data = capture}
         table.insert(self._list, op)
-        minetest.chat_send_all("captured " .. string.sub(dump(op), 1, 100))
     end,
 
     -- restore state of the world map from history
@@ -21,7 +20,6 @@ local history = {
             return
         end
 
-        minetest.chat_send_all("undoing " .. string.sub(dump(op), 1, 100))
         local vm = minetest.get_voxel_manip()
         local minv,maxv = vm:read_from_map(op.minp, op.maxp)
         local va = VoxelArea:new({MinEdge = minv, MaxEdge = maxv})
@@ -66,7 +64,6 @@ terraform = {
 
     -- show configuration form for the specific tool
     show_config = function(self, player, tool_name)
-        minetest.chat_send_all("show_config "..tool_name)
         if not self._tools[tool_name].render_config then
             return
         end
@@ -90,7 +87,6 @@ terraform = {
             table.insert(result, part)
         end
         while #result < size do table.insert(result, "") end
-        minetest.chat_send_all("string_to_list "..s.." "..dump(result))
         return result
     end,
     list_to_string = function(list)
@@ -106,7 +102,6 @@ terraform = {
                 result = result..v
             end
         end
-        minetest.chat_send_all("list_to_string "..dump(list).." "..result)
         return result
     end
 }
@@ -132,24 +127,6 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
             terraform:show_config(player, tool_name, itemstack)
         end
     end
-end)
-
--- Inventory
-minetest.register_on_joinplayer(function(player)
-    minetest.create_detached_inventory("terraform."..player:get_player_name(), {
-        allow_move = function(a,b,c)
-            minetest.chat_send_all("allow_move "..a.." "..b.." "..c)
-            return 0
-        end,
-        allow_take = function(a,b,c)
-            minetest.chat_send_all("allow_take "..a.." "..b.." "..c)
-            return 0
-        end,
-        allow_put = function(a,b,c)
-            minetest.chat_send_all("allow_put "..a.." "..b.." "..c)
-            return 0
-        end
-    })
 end)
 
 minetest.register_on_leaveplayer(function(player)
@@ -211,6 +188,8 @@ terraform:register_tool("brush", {
             "label[0.2,0.5; Shape:]"..
             "image_button[0,1;1,1;"..selection("terraform_brush_sphere.png",settings:get_string("brush") == "sphere")..";brush_sphere;]"..
             "image_button[1,1;1,1;"..selection("terraform_brush_cube.png", settings:get_string("brush") == "cube")..";brush_cube;]"..
+            "image_button[2,1;1,1;"..selection("terraform_brush_sphere.png",settings:get_string("brush") == "hfill")..";brush_hfill;]"..
+
             "container_end[]"..
 
             "container[0.5,3]".. -- size
@@ -240,10 +219,8 @@ terraform:register_tool("brush", {
     end,
 
     config_input = function(self, player, fields, settings)
-        minetest.chat_send_all("fields: "..dump(fields))
         local refresh = false
         if tonumber(fields.size) ~= nil then
-            minetest.chat_send_all("input: "..fields.size)
             settings:set_int("size", math.min(math.max(tonumber(fields.size), 0), 10))
         end
         if fields.brush_sphere ~= nil then
@@ -252,6 +229,10 @@ terraform:register_tool("brush", {
         end
         if fields.brush_cube ~= nil then
             settings:set_string("brush", "cube")
+            refresh = true
+        end
+        if fields.brush_hfill ~= nil then
+            settings:set_string("brush", "hfill")
             refresh = true
         end
         if fields.search ~= nil then
@@ -372,6 +353,60 @@ terraform:register_tool("brush", {
                         end
                     end
                 end,
+            }
+        end,
+        hfill = function()
+            return {
+                get_bounds = function(self, player, target_pos, size_3d)
+                    local flat_size = vector.new(size_3d.x, 0, size_3d.z)
+                    local minp = vector.subtract(target_pos, size_3d)
+                    local maxp = vector.add(target_pos, size_3d)
+                    minp.y = target_pos.y - 100
+                    return minp, maxp
+                end,
+                paint = function(self, data, a, target_pos, minp, maxp, ctx)
+
+                    local origin = a:indexp(target_pos)
+
+                    -- find deepest level (as negative)
+                    local depth = 0
+                    for x = -ctx.size_3d.x,ctx.size_3d.x do
+                        for z = -ctx.size_3d.z,ctx.size_3d.z do
+                            -- look in the circle around origin
+                            local r = (x/(ctx.size_3d.x+0.3))^2 + (z/(ctx.size_3d.z+0.3))^2
+                            if r < 1 then
+                                -- scan 100 levels down
+                                for y = 0,-100,-1 do
+                                    -- stop if the bottom is hit
+                                    local p = origin + x + y * a.ystride + z * a.zstride
+                                    if data[p] ~= minetest.CONTENT_AIR then
+                                        if y < depth then depth = y end
+                                        break
+                                    end
+                                end
+                            end
+                        end
+                    end
+
+                    -- fill
+                    for x = -ctx.size_3d.x,ctx.size_3d.x do
+                        for z = -ctx.size_3d.z,ctx.size_3d.z do
+                            -- look in the circle around origin
+                            local r = (x/(ctx.size_3d.x+0.3))^2 + (z/(ctx.size_3d.z+0.3))^2
+                            if r < 1 then
+                                -- fill with material down from cut off point to depth
+                                local cutoff = math.min(0, math.floor(depth * math.sin((r - 0.3) * math.pi / 2)))
+                                for y = cutoff,depth,-1 do
+                                    i = origin + x + y * a.ystride + z * a.zstride
+
+                                    if ctx.in_mask(data[i]) then
+                                        data[i] = ctx.get_paint()
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
             }
         end
     }
