@@ -186,9 +186,9 @@ terraform:register_tool("brush", {
 
             "container[0.5,0.5]".. -- shape
             "label[0.2,0.5; Shape:]"..
-            "image_button[0,1;1,1;"..selection("terraform_brush_sphere.png",settings:get_string("brush") == "sphere")..";brush_sphere;]"..
-            "image_button[1,1;1,1;"..selection("terraform_brush_cube.png", settings:get_string("brush") == "cube")..";brush_cube;]"..
-            "image_button[2,1;1,1;"..selection("terraform_brush_sphere.png",settings:get_string("brush") == "hfill")..";brush_hfill;]"..
+            "image_button[0,1;1,1;"..selection("terraform_shape_sphere.png",settings:get_string("shape") == "sphere")..";shape_sphere;]"..
+            "image_button[1,1;1,1;"..selection("terraform_shape_cube.png", settings:get_string("shape") == "cube")..";shape_cube;]"..
+            "image_button[2,1;1,1;"..selection("terraform_shape_sphere.png",settings:get_string("shape") == "hfill")..";shape_hfill;]"..
 
             "container_end[]"..
 
@@ -223,16 +223,16 @@ terraform:register_tool("brush", {
         if tonumber(fields.size) ~= nil then
             settings:set_int("size", math.min(math.max(tonumber(fields.size), 0), 10))
         end
-        if fields.brush_sphere ~= nil then
-            settings:set_string("brush", "sphere")
+        if fields.shape_sphere ~= nil then
+            settings:set_string("shape", "sphere")
             refresh = true
         end
-        if fields.brush_cube ~= nil then
-            settings:set_string("brush", "cube")
+        if fields.shape_cube ~= nil then
+            settings:set_string("shape", "cube")
             refresh = true
         end
-        if fields.brush_hfill ~= nil then
-            settings:set_string("brush", "hfill")
+        if fields.shape_hfill ~= nil then
+            settings:set_string("shape", "hfill")
             refresh = true
         end
         if fields.search ~= nil then
@@ -260,13 +260,13 @@ terraform:register_tool("brush", {
         local size = settings:get_int("size") or 3
         local size_3d = vector.new(size, size, size)
 
-        -- Pick a brush
-        local brush_name = settings:get_string("brush") or "sphere"
-        if not self.brushes[brush_name] then brush_name = "sphere" end
-        local brush = self.brushes[brush_name]()
+        -- Pick a shape
+        local shape_name = settings:get_string("shape") or "sphere"
+        if not self.shapes[shape_name] then shape_name = "sphere" end
+        local shape = self.shapes[shape_name]()
 
         -- Define working area and load state
-        local minp,maxp = brush:get_bounds(player, target_pos, size_3d)
+        local minp,maxp = shape:get_bounds(player, target_pos, size_3d)
         local v = minetest.get_voxel_manip()
         local minv, maxv = v:read_from_map(minp, maxp)
         local a = VoxelArea:new({MinEdge = minv, MaxEdge = maxv })
@@ -311,7 +311,7 @@ terraform:register_tool("brush", {
         end
 
         -- Paint
-        brush:paint(data, a, target_pos, minp, maxp, ctx)
+        shape:paint(data, a, target_pos, minp, maxp, ctx)
 
         -- Save back to map
         v:set_data(data)
@@ -319,8 +319,8 @@ terraform:register_tool("brush", {
     end,
 
 
-    -- Definition of brushes
-    brushes = {
+    -- Definition of shapes
+    shapes = {
         cube = function()
             return {
                 get_bounds = function(self, player, target_pos, size_3d)
