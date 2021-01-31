@@ -403,7 +403,7 @@ terraform:register_tool("brush", {
                     local flat_size = vector.new(size_3d.x, 0, size_3d.z)
                     local minp = vector.subtract(target_pos, size_3d)
                     local maxp = vector.add(target_pos, size_3d)
-                    minp.y = target_pos.y - 100
+                    minp.y = target_pos.y - 100 -- look up to 100 meters down
                     return minp, maxp
                 end,
                 paint = function(self, data, a, target_pos, minp, maxp, ctx)
@@ -475,7 +475,7 @@ terraform:register_tool("brush", {
                         return weight
                     end
 
-                    --
+                    -- Spherical shape
                     -- Reduce all bounds by 1 to avoid edge glitches when looking for neighbours
                     for x = -ctx.size_3d.x+1,ctx.size_3d.x-1 do
                         for y = -ctx.size_3d.y+1,ctx.size_3d.y-1 do
@@ -483,7 +483,7 @@ terraform:register_tool("brush", {
                                 local r = (x/ctx.size_3d.x)^2 + (y/ctx.size_3d.y)^2 + (z/ctx.size_3d.z)^2
                                 if r <= 1 then
                                     local i = origin + x + a.ystride*y + a.zstride*z
-                                    b[i] = get_weight(i) > 7.8 
+                                    b[i] = get_weight(i) > 7.8  --max weight here is 15.6
                                 end
                             end
                         end
