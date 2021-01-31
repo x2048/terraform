@@ -85,6 +85,7 @@ terraform = {
         local result = {}
         for part in s:gmatch("[^,]+") do
             table.insert(result, part)
+
         end
         while #result < size do table.insert(result, "") end
         return result
@@ -110,12 +111,19 @@ terraform = {
 minetest.register_on_player_receive_fields(function(player, formname, fields)
     if terraform._latest_form and formname == terraform._latest_form.id then
         local tool_name = terraform._latest_form.tool_name
-        if not terraform._tools[tool_name].config_input then
+        local tool = terraform._tools[tool_name]
+        if not tool.config_input then
             return
         end
 
         local itemstack = player:get_wielded_item()
-        local reload = terraform._tools[tool_name]:config_input(player, fields, itemstack:get_meta())
+        local reload = tool:config_input(player, fields, itemstack:get_meta())
+
+        -- update tool description in the inventory
+        if tool.get_description then
+            itemstack:get_meta():set_string("description", tool:get_description(itemstack:get_meta()))
+        end
+
         player:set_wielded_item(itemstack)
 
         if fields.quit then
@@ -256,6 +264,13 @@ terraform:register_tool("brush", {
         end
 
         return refresh
+    end,
+
+    get_description = function(self, settings)
+        return "Terraform Brush ("..(settings:get_string("shape") or "shpere")..")\n"..
+            "size "..(settings:get_int("size") or 0).."\n"..
+            "paint "..(settings:get_string("paint")).."\n"..
+            "mask "..(settings:get_string("mask"))
     end,
 
     execute = function(self, player, target, settings)
