@@ -329,7 +329,13 @@ terraform:register_tool("brush", {
         cube = function()
             return {
                 get_bounds = function(self, player, target_pos, size_3d)
-                    return vector.subtract(target_pos, size_3d), vector.add(target_pos, size_3d)
+                    if player:get_pos().y > target_pos.y then
+                        -- place on top if looking down
+                        return vector.subtract(target_pos, vector.new(size_3d.x, 0, size_3d.z)), vector.add(target_pos, vector.new(size_3d.x, 2*size_3d.y, size_3d.z))
+                    else
+                        -- place on bottom if looking up
+                        return vector.subtract(target_pos, vector.new(size_3d.x, 2*size_3d.y, size_3d.z)), vector.add(target_pos, vector.new(size_3d.x, 0, size_3d.z))
+                    end
                 end,
                 paint = function(self, data, a, target_pos, minp, maxp, ctx)
                     for i in a:iter(minp.x, minp.y, minp.z, maxp.x, maxp.y, maxp.z) do
@@ -363,7 +369,13 @@ terraform:register_tool("brush", {
         cylinder = function()
             return {
                 get_bounds = function(self, player, target_pos, size_3d)
-                    return vector.subtract(target_pos, vector.new(size_3d.x, 0, size_3d.z)), vector.add(target_pos, size_3d)
+                    if player:get_pos().y > target_pos.y then
+                        -- place on top if looking down
+                        return vector.subtract(target_pos, vector.new(size_3d.x, 0, size_3d.z)), vector.add(target_pos, vector.new(size_3d.x, size_3d.y, size_3d.z))
+                    else
+                        -- place on bottom if looking up
+                        return vector.subtract(target_pos, vector.new(size_3d.x, size_3d.y, size_3d.z)), vector.add(target_pos, vector.new(size_3d.x, 0, size_3d.z))
+                    end
                 end,
                 paint = function(self, data, a, target_pos, minp, maxp, ctx)
                     for i in a:iter(minp.x, minp.y, minp.z, maxp.x, maxp.y, maxp.z) do
