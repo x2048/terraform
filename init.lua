@@ -188,7 +188,7 @@ terraform:register_tool("brush", {
             "label[0.2,0.5; Shape:]"..
             "image_button[0,1;1,1;"..selection("terraform_shape_sphere.png",settings:get_string("shape") == "sphere")..";shape_sphere;]"..
             "image_button[1,1;1,1;"..selection("terraform_shape_cube.png", settings:get_string("shape") == "cube")..";shape_cube;]"..
-            "image_button[2,1;1,1;"..selection("terraform_shape_sphere.png",settings:get_string("shape") == "hfill")..";shape_hfill;]"..
+            "image_button[2,1;1,1;"..selection("terraform_shape_plateau.png",settings:get_string("shape") == "plateau")..";shape_plateau;]"..
 
             "container_end[]"..
 
@@ -231,8 +231,8 @@ terraform:register_tool("brush", {
             settings:set_string("shape", "cube")
             refresh = true
         end
-        if fields.shape_hfill ~= nil then
-            settings:set_string("shape", "hfill")
+        if fields.shape_plateau ~= nil then
+            settings:set_string("shape", "plateau")
             refresh = true
         end
         if fields.search ~= nil then
@@ -355,7 +355,7 @@ terraform:register_tool("brush", {
                 end,
             }
         end,
-        hfill = function()
+        plateau = function()
             return {
                 get_bounds = function(self, player, target_pos, size_3d)
                     local flat_size = vector.new(size_3d.x, 0, size_3d.z)
