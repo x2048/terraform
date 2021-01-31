@@ -188,7 +188,8 @@ terraform:register_tool("brush", {
             "label[0.2,0.5; Shape:]"..
             "image_button[0,1;1,1;"..selection("terraform_shape_sphere.png",settings:get_string("shape") == "sphere")..";shape_sphere;]"..
             "image_button[1,1;1,1;"..selection("terraform_shape_cube.png", settings:get_string("shape") == "cube")..";shape_cube;]"..
-            "image_button[2,1;1,1;"..selection("terraform_shape_plateau.png",settings:get_string("shape") == "plateau")..";shape_plateau;]"..
+            "image_button[2,1;1,1;"..selection("terraform_shape_cylinder.png", settings:get_string("shape") == "cylinder")..";shape_cylinder;]"..
+            "image_button[0,2;1,1;"..selection("terraform_shape_plateau.png",settings:get_string("shape") == "plateau")..";shape_plateau;]"..
 
             "container_end[]"..
 
@@ -233,6 +234,10 @@ terraform:register_tool("brush", {
         end
         if fields.shape_plateau ~= nil then
             settings:set_string("shape", "plateau")
+            refresh = true
+        end
+        if fields.shape_cylinder ~= nil then
+            settings:set_string("shape", "cylinder")
             refresh = true
         end
         if fields.search ~= nil then
@@ -349,6 +354,26 @@ terraform:register_tool("brush", {
                         delta = { x = delta.x^2, y = delta.y^2, z = delta.z^2 }
 
                         if 1 > delta.x + delta.y + delta.z and ctx.in_mask(data[i]) then
+                            data[i] = ctx.get_paint()
+                        end
+                    end
+                end,
+            }
+        end,
+        cylinder = function()
+            return {
+                get_bounds = function(self, player, target_pos, size_3d)
+                    return vector.subtract(target_pos, vector.new(size_3d.x, 0, size_3d.z)), vector.add(target_pos, size_3d)
+                end,
+                paint = function(self, data, a, target_pos, minp, maxp, ctx)
+                    for i in a:iter(minp.x, minp.y, minp.z, maxp.x, maxp.y, maxp.z) do
+                        local ip = a:position(i)
+                        local epsilon = 0.3
+                        local delta = { x = ip.x - target_pos.x, z = ip.z - target_pos.z }
+                        delta = { x = delta.x / (ctx.size_3d.x + epsilon), z = delta.z / (ctx.size_3d.z + epsilon) }
+                        delta = { x = delta.x^2, z = delta.z^2 }
+
+                        if 1 > delta.x + delta.z and ctx.in_mask(data[i]) then
                             data[i] = ctx.get_paint()
                         end
                     end
