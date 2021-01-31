@@ -185,7 +185,7 @@ terraform:register_tool("brush", {
             "no_prepend[]"..
 
             "container[0.5,0.5]".. -- shape
-            "label[0.2,0.5; Shape:]"..
+            "label[0,0.5; Shape:]"..
             "image_button[0,1;1,1;"..selection("terraform_shape_sphere.png",settings:get_string("shape") == "sphere")..";shape_sphere;]"..
             "image_button[1,1;1,1;"..selection("terraform_shape_cube.png", settings:get_string("shape") == "cube")..";shape_cube;]"..
             "image_button[2,1;1,1;"..selection("terraform_shape_cylinder.png", settings:get_string("shape") == "cylinder")..";shape_cylinder;]"..
@@ -194,7 +194,7 @@ terraform:register_tool("brush", {
 
             "container_end[]"..
 
-            "container[0.5,3]".. -- size
+            "container[0.5,4]".. -- size
             "field[0,0;2,1;size;Size;"..(settings:get_int("size") or 3).."]"..
             "field_close_on_enter[size;false]"..
             "container_end[]"..
