@@ -190,6 +190,7 @@ terraform:register_tool("brush", {
             "image_button[1,1;1,1;"..selection("terraform_shape_cube.png", settings:get_string("shape") == "cube")..";shape_cube;]"..
             "image_button[2,1;1,1;"..selection("terraform_shape_cylinder.png", settings:get_string("shape") == "cylinder")..";shape_cylinder;]"..
             "image_button[0,2;1,1;"..selection("terraform_shape_plateau.png",settings:get_string("shape") == "plateau")..";shape_plateau;]"..
+            "image_button[1,2;1,1;"..selection("terraform_shape_smooth.png",settings:get_string("shape") == "smooth")..";shape_smooth;]"..
 
             "container_end[]"..
 
@@ -238,6 +239,10 @@ terraform:register_tool("brush", {
         end
         if fields.shape_cylinder ~= nil then
             settings:set_string("shape", "cylinder")
+            refresh = true
+        end
+        if fields.shape_smooth ~= nil then
+            settings:set_string("shape", "smooth")
             refresh = true
         end
         if fields.search ~= nil then
@@ -445,7 +450,57 @@ terraform:register_tool("brush", {
                     end
                 end
             }
-        end
+        end,
+        smooth = function()
+            return {
+                get_bounds = function(self, player, target_pos, size_3d)
+                    return vector.subtract(target_pos, size_3d), vector.add(target_pos, size_3d)
+                end,
+                paint = function(self, data, a, target_pos, minp, maxp, ctx)
+                    local origin = a:indexp(target_pos)
+                    local b  = {}
+
+                    local function get_weight(i)
+                        local weight = 0
+
+                        for lx = -1,1 do
+                            for ly = -1,1 do
+                                for lz = -1,1 do
+                                    if data[i + lx + a.ystride*ly + a.zstride*lz] ~= minetest.CONTENT_AIR then
+                                        weight = weight + (1 / math.max(1, math.abs(lx) + math.abs(ly) + math.abs(lz)))
+                                    end
+                                end
+                            end
+                        end
+                        return weight
+                    end
+
+                    --
+                    -- Reduce all bounds by 1 to avoid edge glitches when looking for neighbours
+                    for x = -ctx.size_3d.x+1,ctx.size_3d.x-1 do
+                        for y = -ctx.size_3d.y+1,ctx.size_3d.y-1 do
+                            for z = -ctx.size_3d.z+1,ctx.size_3d.z-1 do
+                                local r = (x/ctx.size_3d.x)^2 + (y/ctx.size_3d.y)^2 + (z/ctx.size_3d.z)^2
+                                if r <= 1 then
+                                    local i = origin + x + a.ystride*y + a.zstride*z
+                                    b[i] = get_weight(i) > 7.8 
+                                end
+                            end
+                        end
+                    end
+
+                    for i,v in pairs(b) do
+                        if v then
+                            if ctx.in_mask(data[i]) then
+                                data[i] = ctx.get_paint()
+                            end
+                        else
+                            data[i] = minetest.CONTENT_AIR
+                        end
+                    end
+                end,
+            }
+        end,
     }
 })
 minetest.register_alias("terraform:sculptor", "terraform:brush")
