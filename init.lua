@@ -172,21 +172,29 @@ terraform:register_tool("brush", {
             end
         })
 
-        local all_nodes = {}
+        local palette = {}
         local count = 0
-        local pattern = settings:get_string("search")
+        local pattern = settings:get_string("search_text")
+        local skip = 40 * (settings:get_int("search_page") or 0)
         for k,v in pairs(minetest.registered_nodes) do
             if not pattern or string.find(k, pattern) ~= nil then
-                table.insert(all_nodes, k)
+                if skip > 0 then
+                    skip = skip - 1
+                else
+                    table.insert(palette, k)
+                    if #palette >= 40 then
+                        break
+                    end
+                end
                 count = count + 1
             end
         end
-        while count < 40 do table.insert(all_nodes, "") count = count + 1 end
+        while #palette < 40 do table.insert(palette, "") end
 
         local paint = terraform.string_to_list(settings:get_string("paint"), 10)
         local mask = terraform.string_to_list(settings:get_string("mask"), 10)
 
-        inventory:set_list("palette", all_nodes)
+        inventory:set_list("palette", palette)
         inventory:set_list("paint", paint)
         inventory:set_list("mask", mask)
 
@@ -214,11 +222,14 @@ terraform:register_tool("brush", {
             "container_end[]"..
 
             "container[4,0.5]".. -- creative
-            "label[0,0.5; All items]"..
-            "label[4,0.5; Search:]"..
-            "field[5.5,0;2,1;search;;"..(settings:get_string("search") or "").."]"..
-            "field_close_on_enter[search;false]"..
-            "list[detached:terraform."..player:get_player_name()..";palette;0,1;10,3]"..
+            "label[0,0.5; Palette]"..
+            "label[4.75,0.5; Find nodes:]"..
+            "field[6.5,0.1;2,0.75;search_text;;"..(settings:get_string("search_text") or "").."]"..
+            "field_close_on_enter[search_text;false]"..
+            "button[8.5,0.1;2,0.75;search;Search]"..
+            "button[10.5,0.1;0.75,0.75;prev_page;<]"..
+            "button[11.25,0.1;0.75,0.75;next_page;>]"..
+            "list[detached:terraform."..player:get_player_name()..";palette;0,1;10,4]"..
             "container_end[]"..
 
             "container[4,6]".. -- paint
@@ -279,10 +290,23 @@ terraform:register_tool("brush", {
             settings:set_string("shape", "smooth")
             refresh = true
         end
-        if fields.search ~= nil then
-            settings:set_string("search", fields.search)
+        if fields.search_text ~= nil then
+            settings:set_string("search_text", fields.search_text or "")
             refresh = true
         end
+        if fields.search ~= nil or (fields.search_text ~= nil and fields.key_enter_field == "search_text") then
+            settings:set_int("search_page", 0)
+            refresh = true
+        end
+        if fields.prev_page ~= nil then
+            settings:set_int("search_page", math.max(0, (settings:get_int("search_page") or 0) - 1))
+            refresh = true
+        end
+        if fields.next_page ~= nil then
+            settings:set_int("search_page", (settings:get_int("search_page") or 0) + 1)
+            refresh = true
+        end
+
         for _,color in ipairs(self.colors) do
             if fields["color_"..color] then
                 settings:set_string("color", color)
