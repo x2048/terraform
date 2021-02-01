@@ -150,6 +150,11 @@ terraform:register_tool("brush", {
     short_description = "Brush",
     inventory_image = "terraform_tool_brush.png",
 
+    -- 16 logical tag colors
+    colors = { "red", "yellow", "lime", "aqua", 
+               "darkred", "orange", "darkgreen", "mediumblue",
+               "violet", "wheat", "olive", "dodgerblue" },
+
     render_config = function(self, player, settings)
         local function selection(texture, selected)
             if selected then return texture.."^terraform_selection.png" end
@@ -224,7 +229,25 @@ terraform:register_tool("brush", {
             "container[4,8]".. -- Mask
             "label[0,0.5; Mask]"..
             "list[detached:terraform."..player:get_player_name()..";mask;0,1;10,1]"..
-            "container_end[]"
+            "container_end[]"..
+
+            "container[0.5, 6]".. -- Color
+            "label[0,0.5; Color Tag]"
+
+        local count = 0
+        local size = 0.5
+        for _, color in ipairs(self.colors) do 
+            local offset = size*(count % 4)
+            local line = 0.75 + size*math.floor(count / 4)
+            local texture = "terraform_tool_brush.png^[multiply:"..color..""
+            spec = spec..
+            "image_button["..offset..","..line..";"..size..","..size..";"..selection(texture,settings:get_string("color") == color)..";color_"..color..";]"
+
+            count = count + 1
+        end
+        spec = spec..
+            "container_end[]"..
+            ""
         return spec
     end,
 
@@ -257,6 +280,13 @@ terraform:register_tool("brush", {
             settings:set_string("search", fields.search)
             refresh = true
         end
+        for _,color in ipairs(self.colors) do
+            if fields["color_"..color] then
+                settings:set_string("color", color)
+                refresh = true
+            end
+        end
+
         local inv = terraform.get_inventory(player)
         if inv ~= nil then
             settings:set_string("paint", terraform.list_to_string(inv:get_list("paint")))
@@ -519,6 +549,20 @@ terraform:register_tool("brush", {
     }
 })
 minetest.register_alias("terraform:sculptor", "terraform:brush")
+
+-- Colorize brush when putting to inventory
+minetest.register_on_player_inventory_action(function(player,action,inventory,inventory_info)
+    if inventory_info.listname ~= "main" or inventory_info.stack:get_name() ~= "terraform:brush" then
+        return
+    end
+    local stack = inventory_info.stack
+    if (stack:get_meta():get_string("color") or "") == "" then
+        local colors = terraform._tools["brush"].colors
+        local color = colors[math.random(1,#colors)]
+        stack:get_meta():set_string("color", color)
+        inventory:set_stack(inventory_info.listname, inventory_info.index, stack)
+    end
+end)
 
 terraform:register_tool("undo", {
     description = "Terraform Undo\n\nUndoes changes to the world",
