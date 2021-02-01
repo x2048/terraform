@@ -192,10 +192,12 @@ terraform:register_tool("brush", {
 
         spec = 
             "formspec_version[3]"..
-            "size[17,11]"..
-            "position[0.1,0.15]"..
-            "anchor[0,0]"..
+            "size[17,12]"..
+            "position[0.5,0.45]"..
+            "anchor[0.5,0.5]"..
             "no_prepend[]"..
+
+            "button_exit[14.5,10.5;2,1;quit;Close]".. -- Close button !Remember to offset when form size changes
 
             "container[0.5,0.5]".. -- shape
             "label[0,0.5; Shape:]"..
@@ -204,7 +206,6 @@ terraform:register_tool("brush", {
             "image_button[2,1;1,1;"..selection("terraform_shape_cylinder.png", settings:get_string("shape") == "cylinder")..";shape_cylinder;]"..
             "image_button[0,2;1,1;"..selection("terraform_shape_plateau.png",settings:get_string("shape") == "plateau")..";shape_plateau;]"..
             "image_button[1,2;1,1;"..selection("terraform_shape_smooth.png",settings:get_string("shape") == "smooth")..";shape_smooth;]"..
-
             "container_end[]"..
 
             "container[0.5,4]".. -- size
@@ -222,18 +223,18 @@ terraform:register_tool("brush", {
 
             "container[4,6]".. -- paint
             "label[0,0.5; Paint]"..
-            "checkbox[4,0.5;air;Air;false]"..
             "list[detached:terraform."..player:get_player_name()..";paint;0,1;10,1]"..
             "container_end[]"..
 
             "container[4,8]".. -- Mask
             "label[0,0.5; Mask]"..
             "list[detached:terraform."..player:get_player_name()..";mask;0,1;10,1]"..
-            "container_end[]"..
+            "container_end[]"
 
-            "container[0.5, 6]".. -- Color
+        -- Color tags
+        spec = spec..
+            "container[0.5, 6]"..
             "label[0,0.5; Color Tag]"
-
         local count = 0
         local size = 0.5
         for _, color in ipairs(self.colors) do 
@@ -245,9 +246,11 @@ terraform:register_tool("brush", {
 
             count = count + 1
         end
+
         spec = spec..
             "container_end[]"..
             ""
+
         return spec
     end,
 
