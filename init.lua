@@ -565,12 +565,12 @@ terraform:register_tool("brush", {
                     end
 
                     for i,v in pairs(b) do
-                        if v then
-                            if ctx.in_mask(data[i]) then
+                        if ctx.in_mask(data[i]) then
+                            if v then
                                 data[i] = ctx.get_paint()
+                            else
+                                data[i] = minetest.CONTENT_AIR
                             end
-                        else
-                            data[i] = minetest.CONTENT_AIR
                         end
                     end
                 end,
