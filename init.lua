@@ -472,11 +472,8 @@ terraform:register_tool("brush", {
         plateau = function()
             return {
                 get_bounds = function(self, player, target_pos, size_3d)
-                    local flat_size = vector.new(size_3d.x, 0, size_3d.z)
-                    local minp = vector.subtract(target_pos, size_3d)
-                    local maxp = vector.add(target_pos, size_3d)
-                    minp.y = target_pos.y - 100 -- look up to 100 meters down
-                    return minp, maxp
+                    -- look up to 100 meters down
+                    return vector.subtract(target_pos, vector.new(size_3d.x, 100, size_3d.z)), vector.add(target_pos, vector.new(size_3d.x, 0, size_3d.z))
                 end,
                 paint = function(self, data, a, target_pos, minp, maxp, ctx)
 
@@ -493,7 +490,7 @@ terraform:register_tool("brush", {
                                 for y = 0,-100,-1 do
                                     -- stop if the bottom is hit
                                     local p = origin + x + y * a.ystride + z * a.zstride
-                                    if data[p] ~= minetest.CONTENT_AIR then
+                                    if not ctx.in_mask(data[p]) then
                                         if y < depth then depth = y end
                                         break
                                     end
@@ -508,13 +505,19 @@ terraform:register_tool("brush", {
                             -- look in the circle around origin
                             local r = (x/(ctx.size_3d.x+0.3))^2 + (z/(ctx.size_3d.z+0.3))^2
                             if r < 1 then
+                                -- innermost 0.3 radius is fully filled, then sine descend
+                                local cutoff = 0
+                                if r > 0.6 then
+                                    cutoff = math.min(0, math.floor(depth * math.sin((r - 0.6) * math.pi / 4)))
+                                end
                                 -- fill with material down from cut off point to depth
-                                local cutoff = math.min(0, math.floor(depth * math.sin((r - 0.3) * math.pi / 2)))
                                 for y = cutoff,depth,-1 do
                                     i = origin + x + y * a.ystride + z * a.zstride
 
                                     if ctx.in_mask(data[i]) then
                                         data[i] = ctx.get_paint()
+                                    else
+                                        break --stop at the first non-mask
                                     end
                                 end
                             end
