@@ -214,6 +214,7 @@ terraform:register_tool("brush", {
             "image_button[2,1;1,1;"..selection("terraform_shape_cylinder.png", settings:get_string("shape") == "cylinder")..";shape_cylinder;]"..
             "image_button[0,2;1,1;"..selection("terraform_shape_plateau.png",settings:get_string("shape") == "plateau")..";shape_plateau;]"..
             "image_button[1,2;1,1;"..selection("terraform_shape_smooth.png",settings:get_string("shape") == "smooth")..";shape_smooth;]"..
+            "image_button[2,2;1,1;"..selection("terraform_shape_cut.png",settings:get_string("shape") == "cut")..";shape_cut;]"..
             "container_end[]"..
 
             "container[0.5,4]".. -- size
@@ -267,9 +268,13 @@ terraform:register_tool("brush", {
 
     config_input = function(self, player, fields, settings)
         local refresh = false
+
+        -- Size
         if tonumber(fields.size) ~= nil then
             settings:set_int("size", math.min(math.max(tonumber(fields.size), 0), 10))
         end
+
+        -- Shape
         if fields.shape_sphere ~= nil then
             settings:set_string("shape", "sphere")
             refresh = true
@@ -290,6 +295,12 @@ terraform:register_tool("brush", {
             settings:set_string("shape", "smooth")
             refresh = true
         end
+        if fields.shape_cut ~= nil then
+            settings:set_string("shape", "cut")
+            refresh = true
+        end
+
+        -- Search
         if fields.search_text ~= nil then
             settings:set_string("search_text", fields.search_text or "")
             refresh = true
@@ -307,6 +318,7 @@ terraform:register_tool("brush", {
             refresh = true
         end
 
+        -- Color Tags
         for _,color in ipairs(self.colors) do
             if fields["color_"..color] then
                 settings:set_string("color", color)
@@ -570,6 +582,41 @@ terraform:register_tool("brush", {
                                 data[i] = ctx.get_paint()
                             else
                                 data[i] = minetest.CONTENT_AIR
+                            end
+                        end
+                    end
+                end,
+            }
+        end,
+        cut = function()
+            return {
+                get_bounds = function(self, player, target_pos, size_3d)
+                    return vector.subtract(target_pos, size_3d), vector.add(target_pos, size_3d)
+                end,
+                paint = function(self, data, a, target_pos, minp, maxp, ctx)
+                    local origin = a:indexp(target_pos)
+                    local normal = vector.direction(target_pos, ctx.player:get_pos())
+                    local threshold = math.pi / 36 -- 5 degrees
+                    minetest.chat_send_all("threshold "..threshold)
+
+                    -- Spherical shape
+                    for x = -ctx.size_3d.x,ctx.size_3d.x do
+                        for y = -ctx.size_3d.y,ctx.size_3d.y do
+                            for z = -ctx.size_3d.z,ctx.size_3d.z do
+                                local r = (x/ctx.size_3d.x)^2 + (y/ctx.size_3d.y)^2 + (z/ctx.size_3d.z)^2
+                                if r <= 1 then
+                                    local i = origin + x + y*a.ystride + z*a.zstride
+
+                                    local dot = vector.dot(normal, vector.new(x, y, z))
+                                    minetest.chat_send_all("pos "..x..", "..y..", "..z.." dot "..dot)
+                                    if math.abs(dot) > threshold and ctx.in_mask(data[i]) then
+                                        if dot <= 0 then
+                                            data[i] = ctx.get_paint()
+                                        else
+                                            data[i] = minetest.CONTENT_AIR
+                                        end
+                                    end
+                                end
                             end
                         end
                     end
