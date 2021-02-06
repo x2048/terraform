@@ -30,7 +30,7 @@ local history = {
             si = si + 1
         end
         vm:set_data(data)
-        vm:write_to_map()
+        vm:write_to_map(false)
     end 
 }
 
@@ -407,9 +407,9 @@ terraform:register_tool("brush", {
         -- Paint
         shape:paint(data, a, target_pos, minp, maxp, ctx)
 
-        -- Save back to map
+        -- Save back to map, no light information
         v:set_data(data)
-        v:write_to_map()
+        v:write_to_map(false)
     end,
 
 
@@ -597,7 +597,6 @@ terraform:register_tool("brush", {
                     local origin = a:indexp(target_pos)
                     local normal = vector.direction(target_pos, ctx.player:get_pos())
                     local threshold = math.pi / 36 -- 5 degrees
-                    minetest.chat_send_all("threshold "..threshold)
 
                     -- Spherical shape
                     for x = -ctx.size_3d.x,ctx.size_3d.x do
@@ -608,7 +607,6 @@ terraform:register_tool("brush", {
                                     local i = origin + x + y*a.ystride + z*a.zstride
 
                                     local dot = vector.dot(normal, vector.new(x, y, z))
-                                    minetest.chat_send_all("pos "..x..", "..y..", "..z.." dot "..dot)
                                     if math.abs(dot) > threshold and ctx.in_mask(data[i]) then
                                         if dot <= 0 then
                                             data[i] = ctx.get_paint()
@@ -650,4 +648,167 @@ terraform:register_tool("undo", {
     end
 })
 
+terraform:register_tool("fixlight", {
+    description = "Terraform Fix Light\n\nFix lighting problems",
+    short_description = "Terraform Fix Light",
+    inventory_image = "terraform_shape_cube.png",
+    execute = function(itemstack, player, target)
+        -- Get position
+        local target_pos = minetest.get_pointed_thing_position(target)
+        if not target_pos then
+            return
+        end
+        local s = 100
+        local origin = target_pos
+        local minp = vector.subtract(origin, vector.new(s,s,s))
+        local maxp = vector.add(origin, vector.new(s,s,s))
+        minetest.fix_light(minp, maxp)
+    end
+})
+
+--
+--  Some helper functions needed for the light placement functionality
+--
+local function vector_floor(v)
+    return vector.new(math.floor(v.x), math.floor(v.y), math.floor(v.z))
+end
+local function vector_min(v1, v2)
+    return vector.new(math.min(v1.x,v2.x), math.min(v1.y,v2.y), math.min(v1.z,v2.z))
+end
+
+local function box_diff(a, b)
+    -- a - b for boxes a and b, both a { min = vector, max = vector }
+    -- return 3 boxes
+    -- * split along X axis, full Y and Z
+    -- * split along Y axis, half X, full Z
+    -- * half X, Y, Z
+
+    local function diff_split(ax1, ax2, bx1, bx2)
+        -- given boundaries of two boxes a and b along an axis (x)
+        -- return x coordinates of athe diff a - b as two boxes
+        -- first box is having full height
+        -- second box is having trimmed height (w/o the intersection part)
+
+        if ax1 < bx1 then
+            return ax1, bx1, bx1, ax2
+        else
+            return bx2, ax2, ax1, bx2
+        end
+    end
+
+    local fx1, fx2, hx1, hx2 = diff_split(a.min.x, a.max.x, b.min.x, b.max.x)
+    local fy1, fy2, hy1, hy2 = diff_split(a.min.y, a.max.y, b.min.y, b.max.y)
+    local fz1, fz2, hz1, hz2 = diff_split(a.min.z, a.max.z, b.min.z, b.max.z)
+
+    return { min = vector.new(fx1, a.min.y, a.min.z), max = vector.new(fx2, a.max.y, a.max.z)},
+           { min = vector.new(hx1, fy1, a.min.z), max = vector.new(hx2, fy2, a.max.z)},
+           { min = vector.new(hx1, hy1, fz1), max = vector.new(hx2, hy2, fz2)}
+end
+
+
+local light = {
+    size = 5,
+    level = minetest.LIGHT_MAX,
+    queues = { light = {}, dark = {} },
+    players = {},
+    light_bounds = function(self, pos)
+        local s = self.size
+        return { min = vector.subtract(pos, vector.new(s,s,s)), max = vector.add(pos, vector.new(s,s,s)) }
+    end,
+    add_player = function(self, player)
+        self.players[player:get_player_name()] = { player = player }
+    end,
+    remove_player = function(self, player)
+        local light = self.players[player:get_player_name()]
+        if light ~= nil then
+            table.insert(self.queues.dark, self:light_bounds(vector.floor(light.player:get_pos())))
+            if light.last_pos ~= nil then
+                table.insert(self.queues.dark, self:light_bounds(light.last_pos))
+            end
+        end
+        self.players[player:get_player_name()] = nil
+    end,
+    tick = function(self)
+        for name,pl in pairs(self.players) do
+            local origin = vector.floor(pl.player:get_pos())
+            local box = self:light_bounds(origin)
+            local minp = box.min
+            local maxp = box.max
+            minetest.chat_send_all("light tick "..name.." "..(pl.c or 0))
+            pl.c = (pl.c or 0) + 1
+
+            if pl.last_pos ~= nil then
+                if vector.distance(origin, pl.last_pos) < self.size / 3 then
+                    break -- skip the player, not enough movement
+                end
+                local old_box = self:light_bounds(pl.last_pos)
+                local b1, b2, b3 = box_diff(old_box, box)
+                table.insert(self.queues.dark, b1)
+                table.insert(self.queues.dark, b2)
+                table.insert(self.queues.dark, b3)
+            end
+            table.insert(self.queues.light, box)
+            pl.last_pos = origin
+        end
+
+        -- process queues
+        while #self.queues.dark > 0 do
+            local box = table.remove(self.queues.dark, 1)
+            local vm = minetest.get_voxel_manip(box.min, box.max)
+            vm:read_from_map(box.min, box.max)
+            vm:write_to_map(true) -- fix the light
+        end
+
+        while #self.queues.light > 0 do
+            local box = table.remove(self.queues.light, 1)
+
+            -- Load manipulator
+            local vm = minetest.get_voxel_manip()
+            local mine,maxe = vm:read_from_map(box.min, box.max)
+            local va = VoxelArea:new({MinEdge = mine, MaxEdge = maxe})
+
+            -- Set light information in the area
+            local light = vm:get_light_data()
+            local level = self.level
+            for i in va:iter(box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z) do
+                if light[i] == nil then
+                    light[i] = level*17
+                else
+                    light[i] = math.max(math.floor(light[i] / 16), level) * 16 + math.max(light[i] % 16, level)
+                end
+            end
+            vm:set_light_data(light)
+            vm:write_to_map(false)
+        end
+    end
+}
+
+
+terraform:register_tool("light", {
+    description = "Terraform Light\n\nTurn on the lights",
+    short_description = "Terraform Light",
+    inventory_image = "terraform_shape_sphere.png",
+    execute = function(itemstack, player, target)
+        if player:get_day_night_ratio() ~= nil then
+            player:override_day_night_ratio(nil)
+        else
+            player:override_day_night_ratio(1)
+        end
+        if light.players[player:get_player_name()] == nil then
+            light:add_player(player)
+        else
+            light:remove_player(player)
+        end
+    end
+})
+
+minetest.register_on_leaveplayer(function(player)
+    light:remove_player(player)
+end)
+
+local function place_lights()
+    light:tick()
+    minetest.after(1, place_lights)
+end
+minetest.after(1, place_lights)
 
