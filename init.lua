@@ -228,11 +228,11 @@ terraform:register_tool("brush", {
             "container_end[]"..
 
             "container[0.5,4]".. -- size
-            "label[0,0.5; Size:]"..
-            "field[0,1;2,0.7;size;;"..(settings:get_int("size") or 3).."]"..
+            "label[0,0.4; Size:]"..
+            "field[1,0;1,0.7;size;;"..(settings:get_int("size") or 3).."]"..
             "field_close_on_enter[size;false]"..
             "scrollbaroptions[min=0;max="..self.max_size..";smallstep=1;thumbsize=0;arrows=show]"..
-            "scrollbar[2,1;0.35,0.7;vertical;size_sb;"..(self.max_size - (settings:get_int("size") or 3)).."]"..
+            "scrollbar[2,0;0.35,0.7;vertical;size_sb;"..(self.max_size - (settings:get_int("size") or 3)).."]"..
             "container_end[]"..
 
             "container[4,0.5]".. -- creative
