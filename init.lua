@@ -237,6 +237,7 @@ terraform:register_tool("brush", {
 
             "container[0.5, 5]".. -- flags
             "checkbox[0,0;flags_surface;Surface;"..(settings:get_int("flags_surface") == 1 and "true" or "false").."]"..
+            "checkbox[0,0.5;flags_scatter;Scatter;"..(settings:get_int("flags_scatter") == 1 and "true" or "false").."]"..
             "container_end[]"..
 
             "container[4,0.5]".. -- creative
@@ -285,12 +286,10 @@ terraform:register_tool("brush", {
 
     config_input = function(self, player, fields, settings)
         local refresh = false
-        minetest.chat_send_all("input: "..dump(fields,""))
 
         -- Shape
         for shape,_ in pairs(self.shapes) do
             if fields["shape_"..shape] ~= nil then
-                minetest.chat_send_all("set shape "..shape)
                 settings:set_string("shape", shape)
                 refresh = true
             end
@@ -310,6 +309,9 @@ terraform:register_tool("brush", {
         -- Flags
         if fields.flags_surface ~= nil then
             settings:set_int("flags_surface", fields.flags_surface == "true" and 1 or 0)
+        end
+        if fields.flags_scatter ~= nil then
+            settings:set_int("flags_scatter", fields.flags_scatter == "true" and 1 or 0)
         end
 
         -- Search
@@ -355,7 +357,6 @@ terraform:register_tool("brush", {
     end,
 
     execute = function(self, player, target, settings)
-        minetest.chat_send_all("settings "..dump(settings:to_table(),""))
 
         -- Get position
         local target_pos = minetest.get_pointed_thing_position(target)
@@ -424,6 +425,11 @@ terraform:register_tool("brush", {
                 if data[i] == minetest.CONTENT_AIR then return false end
                 if data[i+a.ystride] == minetest.CONTENT_AIR then return true end
                 return false
+            end)
+        end
+        if settings:get_int("flags_scatter") == 1 then
+            table.insert(flags, function(i)
+                return math.random(1,1000) <= 100
             end)
         end
 
