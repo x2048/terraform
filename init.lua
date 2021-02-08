@@ -213,13 +213,16 @@ terraform:register_tool("brush", {
             "button_exit[14.5,10.5;2,1;quit;Close]".. -- Close button !Remember to offset when form size changes
 
             "container[0.5,0.5]".. -- shape
-            "label[0,0.5; Shape:]"..
-            "image_button[0,1;1,1;"..selection("terraform_shape_sphere.png",settings:get_string("shape") == "sphere")..";shape_sphere;]"..
-            "image_button[1,1;1,1;"..selection("terraform_shape_cube.png", settings:get_string("shape") == "cube")..";shape_cube;]"..
-            "image_button[2,1;1,1;"..selection("terraform_shape_cylinder.png", settings:get_string("shape") == "cylinder")..";shape_cylinder;]"..
-            "image_button[0,2;1,1;"..selection("terraform_shape_plateau.png",settings:get_string("shape") == "plateau")..";shape_plateau;]"..
-            "image_button[1,2;1,1;"..selection("terraform_shape_smooth.png",settings:get_string("shape") == "smooth")..";shape_smooth;]"..
-            "image_button[2,2;1,1;"..selection("terraform_shape_cut.png",settings:get_string("shape") == "cut")..";shape_cut;]"..
+            "label[0,0.5; Shape:]"
+        local pos = 0
+        for shape,_ in pairs(self.shapes) do
+            local x = pos % 3
+            local y = math.floor(pos / 3)
+            spec = spec.."image_button["..x..","..y..";1,1;"..selection("terraform_shape_"..shape..".png",settings:get_string("shape") == shape)..";shape_"..shape..";]"
+            pos = pos + 1
+        end
+
+        spec = spec ..
             "container_end[]"..
 
             "container[0.5,4]".. -- size
@@ -280,29 +283,12 @@ terraform:register_tool("brush", {
         end
 
         -- Shape
-        if fields.shape_sphere ~= nil then
-            settings:set_string("shape", "sphere")
-            refresh = true
-        end
-        if fields.shape_cube ~= nil then
-            settings:set_string("shape", "cube")
-            refresh = true
-        end
-        if fields.shape_plateau ~= nil then
-            settings:set_string("shape", "plateau")
-            refresh = true
-        end
-        if fields.shape_cylinder ~= nil then
-            settings:set_string("shape", "cylinder")
-            refresh = true
-        end
-        if fields.shape_smooth ~= nil then
-            settings:set_string("shape", "smooth")
-            refresh = true
-        end
-        if fields.shape_cut ~= nil then
-            settings:set_string("shape", "cut")
-            refresh = true
+        for shape,_ in pairs(self.shapes) do
+            if fields["shape_"..shape] ~= nil then
+                minetest.chat_send_all("set shape "..shape)
+                settings:set_string("shape", shape)
+                refresh = true
+            end
         end
 
         -- Search
