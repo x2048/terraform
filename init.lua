@@ -172,10 +172,12 @@ terraform:register_tool("brush", {
             allow_move = function(inv,source,sindex,dest,dindex,count)
                 if source == "palette" and dest ~= "palette" then
                     inv:set_stack(dest,dindex, inv:get_stack(source, sindex))
+                    return 0
                 elseif dest == "palette" and source ~= "palette" then
                     inv:set_stack(source, sindex, "")
+                    return 0
                 end
-                return 0
+                return count
             end
         })
 
