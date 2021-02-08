@@ -1,21 +1,26 @@
 -- In-memory history/undo engine
 local history = {
     -- list of history entries
-    _list = {},
+    _lists = {},
+
+    get_list = function(self, name)
+        self._lists[name] = self._lists[name] or {}
+        return self._lists[name]
+    end,
 
     -- capture a cuboid in space using voxel manipulator
-    capture = function(self, data, va, minp, maxp)
+    capture = function(self, player, data, va, minp, maxp)
         local capture = {}
         for i in va:iter(minp.x, minp.y, minp.z, maxp.x, maxp.y, maxp.z) do
             table.insert(capture,data[i])
         end
         local op = {minp = minp, maxp = maxp, data = capture}
-        table.insert(self._list, op)
+        table.insert(self:get_list(player:get_player_name()), op)
     end,
 
     -- restore state of the world map from history
-    undo = function(self)
-        local op = table.remove(self._list)
+    undo = function(self, player)
+        local op = table.remove(self:get_list(player:get_player_name()))
         if not op then
             return
         end
@@ -367,7 +372,7 @@ terraform:register_tool("brush", {
 
         -- Get data and capture history
         local data  = v:get_data()
-        history:capture(data, a, minp, maxp)
+        history:capture(player, data, a, minp, maxp)
 
         -- Set up context
         local ctx = {
@@ -639,15 +644,21 @@ minetest.register_on_player_inventory_action(function(player,action,inventory,in
     end
 end)
 
+--
+-- Undo changes to the world
+--
 terraform:register_tool("undo", {
     description = "Terraform Undo\n\nUndoes changes to the world",
     short_description = "Terraform Undo",
     inventory_image = "terraform_tool_undo.png",
     execute = function(itemstack, player, target)
-        history:undo()
+        history:undo(player)
     end
 })
 
+--
+-- A magic wand to fix light problems.
+--
 terraform:register_tool("fixlight", {
     description = "Terraform Fix Light\n\nFix lighting problems",
     short_description = "Terraform Fix Light",
