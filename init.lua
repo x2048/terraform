@@ -707,8 +707,9 @@ end
 
 
 local light = {
-    size = 5,
+    size = 20,
     level = minetest.LIGHT_MAX,
+    pitch_rate = 1/5,
     queues = { light = {}, dark = {} },
     players = {},
     light_bounds = function(self, pos)
@@ -734,11 +735,10 @@ local light = {
             local box = self:light_bounds(origin)
             local minp = box.min
             local maxp = box.max
-            minetest.chat_send_all("light tick "..name.." "..(pl.c or 0))
             pl.c = (pl.c or 0) + 1
 
             if pl.last_pos ~= nil then
-                if vector.distance(origin, pl.last_pos) < self.size / 3 then
+                if vector.distance(origin, pl.last_pos) < self.size * self.pitch_rate then
                     break -- skip the player, not enough movement
                 end
                 local old_box = self:light_bounds(pl.last_pos)
@@ -755,7 +755,6 @@ local light = {
         while #self.queues.dark > 0 do
             local box = table.remove(self.queues.dark, 1)
             local vm = minetest.get_voxel_manip(box.min, box.max)
-            vm:read_from_map(box.min, box.max)
             vm:write_to_map(true) -- fix the light
         end
 
@@ -808,7 +807,7 @@ end)
 
 local function place_lights()
     light:tick()
-    minetest.after(1, place_lights)
+    minetest.after(0.5, place_lights)
 end
-minetest.after(1, place_lights)
+minetest.after(0.5, place_lights)
 
