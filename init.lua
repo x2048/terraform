@@ -651,7 +651,7 @@ terraform:register_tool("undo", {
 terraform:register_tool("fixlight", {
     description = "Terraform Fix Light\n\nFix lighting problems",
     short_description = "Terraform Fix Light",
-    inventory_image = "terraform_shape_cube.png",
+    inventory_image = "terraform_tool_fix_light.png",
     execute = function(itemstack, player, target)
         -- Get position
         local target_pos = minetest.get_pointed_thing_position(target)
@@ -787,7 +787,7 @@ local light = {
 terraform:register_tool("light", {
     description = "Terraform Light\n\nTurn on the lights",
     short_description = "Terraform Light",
-    inventory_image = "terraform_shape_sphere.png",
+    inventory_image = "terraform_tool_light.png",
     execute = function(itemstack, player, target)
         if player:get_day_night_ratio() ~= nil then
             player:override_day_night_ratio(nil)
