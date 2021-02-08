@@ -240,6 +240,7 @@ terraform:register_tool("brush", {
             "container[0.5, 5]".. -- flags
             "checkbox[0,0;flags_surface;Surface;"..(settings:get_int("flags_surface") == 1 and "true" or "false").."]"..
             "checkbox[0,0.5;flags_scatter;Scatter;"..(settings:get_int("flags_scatter") == 1 and "true" or "false").."]"..
+            "checkbox[0,1;flags_decor;Decoration;"..(settings:get_int("flags_decor") == 1 and "true" or "false").."]"..
             "container_end[]"..
 
             "container[4,0.5]".. -- creative
@@ -314,6 +315,9 @@ terraform:register_tool("brush", {
         end
         if fields.flags_scatter ~= nil then
             settings:set_int("flags_scatter", fields.flags_scatter == "true" and 1 or 0)
+        end
+        if fields.flags_decor ~= nil then
+            settings:set_int("flags_decor", fields.flags_decor == "true" and 1 or 0)
         end
 
         -- Search
@@ -424,21 +428,31 @@ terraform:register_tool("brush", {
         local flags = {}
         if settings:get_int("flags_surface") == 1 then
             table.insert(flags, function(i)
-                if data[i] == minetest.CONTENT_AIR then return false end
-                if data[i+a.ystride] == minetest.CONTENT_AIR then return true end
-                return false
+                if data[i] == minetest.CONTENT_AIR then return nil end
+                if a:position(i).y < maxp.y and data[i+a.ystride] == minetest.CONTENT_AIR then return i end
+                return nil
+            end)
+        end
+        if settings:get_int("flags_decor") == 1 then
+            table.insert(flags, function(i)
+                if data[i] == minetest.CONTENT_AIR then return nil end
+                if a:position(i).y < maxp.y and data[i+a.ystride] == minetest.CONTENT_AIR then return i+a.ystride end
+                return nil
             end)
         end
         if settings:get_int("flags_scatter") == 1 then
             table.insert(flags, function(i)
-                return math.random(1,1000) <= 100
+                return math.random(1,1000) <= 100 and i or nil
             end)
         end
 
-        ctx.draw = function(i)
+        ctx.draw = function(i, paint)
             if not ctx.in_mask(data[i]) then return end -- if not in mask, skip painting
-            for _,f in ipairs(flags) do if not f(i) then return end end -- if false don't allow, skip painting
-            data[i] = ctx.get_paint()
+            for _,f in ipairs(flags) do
+                i = f(i)
+                if not i then return end -- if i is nil, skip painting
+            end
+            data[i] = paint or ctx.get_paint()
         end
 
         -- Paint
