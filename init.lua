@@ -1,8 +1,8 @@
 -- In-memory history/undo engine
 local history = {
-    -- list of history entries
     _lists = {},
 
+    -- get list of history entries
     get_list = function(self, name)
         self._lists[name] = self._lists[name] or {}
         return self._lists[name]
@@ -160,6 +160,8 @@ terraform:register_tool("brush", {
                "darkred", "orange", "darkgreen", "mediumblue",
                "violet", "wheat", "olive", "dodgerblue" },
 
+    max_size = 15,
+
     render_config = function(self, player, settings)
         local function selection(texture, selected)
             if selected then return texture.."^terraform_selection.png" end
@@ -217,7 +219,7 @@ terraform:register_tool("brush", {
         local pos = 0
         for shape,_ in pairs(self.shapes) do
             local x = pos % 3
-            local y = math.floor(pos / 3)
+            local y = math.floor(pos / 3) + 1
             spec = spec.."image_button["..x..","..y..";1,1;"..selection("terraform_shape_"..shape..".png",settings:get_string("shape") == shape)..";shape_"..shape..";]"
             pos = pos + 1
         end
@@ -226,8 +228,11 @@ terraform:register_tool("brush", {
             "container_end[]"..
 
             "container[0.5,4]".. -- size
-            "field[0,0;2,1;size;Size;"..(settings:get_int("size") or 3).."]"..
+            "label[0,0.5; Size:]"..
+            "field[0,1;2,0.7;size;;"..(settings:get_int("size") or 3).."]"..
             "field_close_on_enter[size;false]"..
+            "scrollbaroptions[min=0;max="..self.max_size..";smallstep=1;thumbsize=0;arrows=show]"..
+            "scrollbar[2,1;0.35,0.7;vertical;size_sb;"..(self.max_size - (settings:get_int("size") or 3)).."]"..
             "container_end[]"..
 
             "container[4,0.5]".. -- creative
@@ -278,9 +283,16 @@ terraform:register_tool("brush", {
         local refresh = false
 
         -- Size
-        if tonumber(fields.size) ~= nil then
-            settings:set_int("size", math.min(math.max(tonumber(fields.size), 0), 10))
+        if fields.size_sb ~= nil and string.find(fields.size_sb, "CHG") then
+            local e = minetest.explode_scrollbar_event(fields.size_sb)
+            if e.type == "CHG" then
+                settings:set_int("size", math.min(math.max(self.max_size - tonumber(e.value), 0), self.max_size))
+                refresh = true
+            end
+        elseif fields.size ~= nil then
+            settings:set_int("size", math.min(math.max(tonumber(fields.size), 0), self.max_size))
         end
+
 
         -- Shape
         for shape,_ in pairs(self.shapes) do
