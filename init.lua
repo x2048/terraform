@@ -226,13 +226,17 @@ terraform:register_tool("brush", {
 
         spec = spec ..
             "container_end[]"..
-
+            
             "container[0.5,4]".. -- size
             "label[0,0.4; Size:]"..
             "field[1,0;1,0.7;size;;"..(settings:get_int("size") or 3).."]"..
             "field_close_on_enter[size;false]"..
             "scrollbaroptions[min=0;max="..self.max_size..";smallstep=1;thumbsize=0;arrows=show]"..
             "scrollbar[2,0;0.35,0.7;vertical;size_sb;"..(self.max_size - (settings:get_int("size") or 3)).."]"..
+            "container_end[]"..
+
+            "container[0.5, 5]".. -- flags
+            "checkbox[0,0;flags_surface;Surface;"..(settings:get_int("flags_surface") == 1 and "true" or "false").."]"..
             "container_end[]"..
 
             "container[4,0.5]".. -- creative
@@ -281,6 +285,16 @@ terraform:register_tool("brush", {
 
     config_input = function(self, player, fields, settings)
         local refresh = false
+        minetest.chat_send_all("input: "..dump(fields,""))
+
+        -- Shape
+        for shape,_ in pairs(self.shapes) do
+            if fields["shape_"..shape] ~= nil then
+                minetest.chat_send_all("set shape "..shape)
+                settings:set_string("shape", shape)
+                refresh = true
+            end
+        end
 
         -- Size
         if fields.size_sb ~= nil and string.find(fields.size_sb, "CHG") then
@@ -293,14 +307,9 @@ terraform:register_tool("brush", {
             settings:set_int("size", math.min(math.max(tonumber(fields.size), 0), self.max_size))
         end
 
-
-        -- Shape
-        for shape,_ in pairs(self.shapes) do
-            if fields["shape_"..shape] ~= nil then
-                minetest.chat_send_all("set shape "..shape)
-                settings:set_string("shape", shape)
-                refresh = true
-            end
+        -- Flags
+        if fields.flags_surface ~= nil then
+            settings:set_int("flags_surface", fields.flags_surface == "true" and 1 or 0)
         end
 
         -- Search
@@ -346,6 +355,7 @@ terraform:register_tool("brush", {
     end,
 
     execute = function(self, player, target, settings)
+        minetest.chat_send_all("settings "..dump(settings:to_table(),""))
 
         -- Get position
         local target_pos = minetest.get_pointed_thing_position(target)
@@ -407,6 +417,22 @@ terraform:register_tool("brush", {
             return false
         end
 
+        -- Prepare flags
+        local flags = {}
+        if settings:get_int("flags_surface") == 1 then
+            table.insert(flags, function(i)
+                if data[i] == minetest.CONTENT_AIR then return false end
+                if data[i+a.ystride] == minetest.CONTENT_AIR then return true end
+                return false
+            end)
+        end
+
+        ctx.draw = function(i)
+            if not ctx.in_mask(data[i]) then return end -- if not in mask, skip painting
+            for _,f in ipairs(flags) do if not f(i) then return end end -- if false don't allow, skip painting
+            data[i] = ctx.get_paint()
+        end
+
         -- Paint
         shape:paint(data, a, target_pos, minp, maxp, ctx)
 
@@ -431,9 +457,7 @@ terraform:register_tool("brush", {
                 end,
                 paint = function(self, data, a, target_pos, minp, maxp, ctx)
                     for i in a:iter(minp.x, minp.y, minp.z, maxp.x, maxp.y, maxp.z) do
-                        if ctx.in_mask(data[i]) then
-                            data[i] = ctx.get_paint()
-                        end
+                        ctx.draw(i)
                     end
                 end,
             }
@@ -451,8 +475,8 @@ terraform:register_tool("brush", {
                         delta = { x = delta.x / (ctx.size_3d.x + epsilon), y = delta.y / (ctx.size_3d.y + epsilon), z = delta.z / (ctx.size_3d.z + epsilon) }
                         delta = { x = delta.x^2, y = delta.y^2, z = delta.z^2 }
 
-                        if 1 > delta.x + delta.y + delta.z and ctx.in_mask(data[i]) then
-                            data[i] = ctx.get_paint()
+                        if 1 > delta.x + delta.y + delta.z then
+                            ctx.draw(i)
                         end
                     end
                 end,
@@ -477,8 +501,8 @@ terraform:register_tool("brush", {
                         delta = { x = delta.x / (ctx.size_3d.x + epsilon), z = delta.z / (ctx.size_3d.z + epsilon) }
                         delta = { x = delta.x^2, z = delta.z^2 }
 
-                        if 1 > delta.x + delta.z and ctx.in_mask(data[i]) then
-                            data[i] = ctx.get_paint()
+                        if 1 > delta.x + delta.z then
+                            ctx.draw(i)
                         end
                     end
                 end,
@@ -530,7 +554,7 @@ terraform:register_tool("brush", {
                                     i = origin + x + y * a.ystride + z * a.zstride
 
                                     if ctx.in_mask(data[i]) then
-                                        data[i] = ctx.get_paint()
+                                        ctx.draw(i)
                                     else
                                         break --stop at the first non-mask
                                     end
