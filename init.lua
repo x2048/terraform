@@ -39,6 +39,13 @@ local history = {
     end 
 }
 
+minetest.register_on_dignode(function(pos,oldnode,player)
+    history:capture(player, {minetest.get_content_id(oldnode.name)}, VoxelArea:new({MinEdge=pos,MaxEdge=pos}), pos, pos)
+end)
+minetest.register_on_placenode(function(pos,newnode,player)
+    history:capture(player, {minetest.CONTENT_AIR}, VoxelArea:new({MinEdge=pos,MaxEdge=pos}), pos, pos)
+end)
+
 -- public module API
 terraform = {
     _tools = {},
@@ -52,7 +59,6 @@ terraform = {
             description = spec.description,
             short_description = spec.short_description,
             inventory_image = spec.inventory_image,
-            full_punch_interval = 1.5,
             wield_scale = {x=1,y=1,z=1},
             stack_max = 1,
             range = spec.range or 128.0,
@@ -61,9 +67,17 @@ terraform = {
             on_use = function(itemstack, player, target)
                 terraform:show_config(player, spec.tool_name, itemstack)
             end,
+            on_secondary_use = function(itemstack, player, target)
+                terraform:show_config(player, spec.tool_name, itemstack)
+            end,
             on_place = function(itemstack, player, target)
-                spec:execute(player, target, itemstack:get_meta())
-            end
+                if player:get_player_control().aux1 then
+                    history:undo(player)
+                else
+                    spec:execute(player, target, itemstack:get_meta())
+                end
+                return itemstack
+            end,
         })
     end,
 
