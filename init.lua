@@ -456,7 +456,7 @@ terraform:register_tool("brush", {
         end
         if settings:get_int("flags_scatter") == 1 then
             table.insert(flags, function(i)
-                return math.random(1,1000) <= 100 and i or nil
+                return math.random(1,1000) <= 50 and i or nil
             end)
         end
 
