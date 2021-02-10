@@ -651,31 +651,49 @@ terraform:register_tool("brush", {
         cut = function()
             return {
                 get_bounds = function(self, player, target_pos, size_3d)
-                    return vector.subtract(target_pos, size_3d), vector.add(target_pos, size_3d)
+                    local pp = vector.floor(player:get_pos())
+                    local minp,maxp = vector.subtract(target_pos, size_3d), vector.add(target_pos, size_3d)
+                    return vector.new(math.min(minp.x, pp.x), math.min(minp.y, pp.y), math.min(minp.z, pp.z)),
+                        vector.new(math.max(maxp.x, pp.x), math.max(maxp.y, pp.y), math.max(maxp.z, pp.z))
                 end,
                 paint = function(self, data, a, target_pos, minp, maxp, ctx)
                     local origin = a:indexp(target_pos)
-                    local normal = vector.direction(target_pos, ctx.player:get_pos())
-                    local threshold = math.pi / 36 -- 5 degrees
+                    local paint_flags = {}
 
-                    -- Spherical shape
-                    for x = -ctx.size_3d.x,ctx.size_3d.x do
-                        for y = -ctx.size_3d.y,ctx.size_3d.y do
-                            for z = -ctx.size_3d.z,ctx.size_3d.z do
-                                local r = (x/ctx.size_3d.x)^2 + (y/ctx.size_3d.y)^2 + (z/ctx.size_3d.z)^2
-                                if r <= 1 then
-                                    local i = origin + x + y*a.ystride + z*a.zstride
+                    local function get_weight(i,r)
+                        local top, bottom = 0, 0
 
-                                    local dot = vector.dot(normal, vector.new(x, y, z))
-                                    if math.abs(dot) > threshold and ctx.in_mask(data[i]) then
-                                        if dot <= 0 then
-                                            data[i] = ctx.get_paint()
-                                        else
-                                            data[i] = minetest.CONTENT_AIR
-                                        end
-                                    end
+                        for lx = -r,r do
+                            for ly = -r,r do
+                                for lz = -r,r do
+                                    local weight = 1 -- all dots are equal, but this could be fancier
+                                    top = top + (data[i + lx + a.ystride*ly + a.zstride*lz] ~= minetest.CONTENT_AIR and weight or 0)
+                                    bottom = bottom + weight
                                 end
                             end
+                        end
+                        return top / bottom
+                    end
+
+                    -- Spherical shape
+                    -- Reduce all bounds by 1 to avoid edge glitches when looking for neighbours
+                    for x = -ctx.size_3d.x+1,ctx.size_3d.x-1 do
+                        for y = -ctx.size_3d.y+1,ctx.size_3d.y-1 do
+                            for z = -ctx.size_3d.z+1,ctx.size_3d.z-1 do
+                                local r = (x/ctx.size_3d.x)^2 + (y/ctx.size_3d.y)^2 + (z/ctx.size_3d.z)^2
+                                if r <= 1 then
+                                    local i = origin + x + a.ystride*y + a.zstride*z
+                                    local rr = math.floor(math.max(1,math.min(ctx.size_3d.x/3,(1-r)*ctx.size_3d.x)))
+                                    local dotproduct = vector.dot(ctx.player:get_look_dir(), vector.normalize(vector.new(x,y,z)))
+                                    paint_flags[i] = (get_weight(i, rr) + dotproduct < 0.5)
+                                end
+                            end
+                        end
+                    end
+
+                    for pos,is_air in pairs(paint_flags) do
+                        if is_air ~= (data[pos] == minetest.CONTENT_AIR) then
+                            ctx.draw(pos, is_air and minetest.CONTENT_AIR or ctx.get_paint())
                         end
                     end
                 end,
