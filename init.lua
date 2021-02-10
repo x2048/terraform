@@ -608,21 +608,21 @@ terraform:register_tool("brush", {
                 end,
                 paint = function(self, data, a, target_pos, minp, maxp, ctx)
                     local origin = a:indexp(target_pos)
-                    local b  = {}
+                    local paint_flags = {}
 
-                    local function get_weight(i)
-                        local weight = 0
+                    local function get_weight(i,r)
+                        local top, bottom = 0, 0
 
-                        for lx = -1,1 do
-                            for ly = -1,1 do
-                                for lz = -1,1 do
-                                    if data[i + lx + a.ystride*ly + a.zstride*lz] ~= minetest.CONTENT_AIR then
-                                        weight = weight + (1 / math.max(1, math.abs(lx) + math.abs(ly) + math.abs(lz)))
-                                    end
+                        for lx = -r,r do
+                            for ly = -r,r do
+                                for lz = -r,r do
+                                    local weight = 1 -- all dots are equal, but this could be fancier
+                                    top = top + (data[i + lx + a.ystride*ly + a.zstride*lz] ~= minetest.CONTENT_AIR and weight or 0)
+                                    bottom = bottom + weight
                                 end
                             end
                         end
-                        return weight
+                        return top / bottom
                     end
 
                     -- Spherical shape
@@ -633,20 +633,15 @@ terraform:register_tool("brush", {
                                 local r = (x/ctx.size_3d.x)^2 + (y/ctx.size_3d.y)^2 + (z/ctx.size_3d.z)^2
                                 if r <= 1 then
                                     local i = origin + x + a.ystride*y + a.zstride*z
-                                    b[i] = get_weight(i) > 7.8  --max weight here is 15.6
+                                    local rr = math.floor(math.max(1,math.min(ctx.size_3d.x/3,(1-r)*ctx.size_3d.x)))
+                                    paint_flags[i] = (get_weight(i, rr) >= 0.5)
                                 end
                             end
                         end
                     end
 
-                    for i,v in pairs(b) do
-                        if ctx.in_mask(data[i]) then
-                            if v then
-                                data[i] = ctx.get_paint()
-                            else
-                                data[i] = minetest.CONTENT_AIR
-                            end
-                        end
+                    for pos,is_solid in pairs(paint_flags) do
+                        ctx.draw(pos, not is_solid and minetest.CONTENT_AIR or ctx.get_paint())
                     end
                 end,
             }
