@@ -260,7 +260,7 @@ terraform:register_tool("brush", {
             "container[4,0.5]".. -- creative
             "label[0,0.5; Palette]"..
             "label[4.75,0.5; Find nodes:]"..
-            "field[6.5,0.1;2,0.75;search_text;;"..(settings:get_string("search_text") or "").."]"..
+            "field[6.5,0.1;2,0.75;search_text;;"..minetest.formspec_escape(settings:get_string("search_text") or "").."]"..
             "field_close_on_enter[search_text;false]"..
             "button[8.5,0.1;2,0.75;search;Search]"..
             "button[10.5,0.1;0.75,0.75;prev_page;<]"..
