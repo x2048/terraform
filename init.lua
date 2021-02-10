@@ -634,14 +634,16 @@ terraform:register_tool("brush", {
                                 if r <= 1 then
                                     local i = origin + x + a.ystride*y + a.zstride*z
                                     local rr = math.floor(math.max(1,math.min(ctx.size_3d.x/3,(1-r)*ctx.size_3d.x)))
-                                    paint_flags[i] = (get_weight(i, rr) >= 0.5)
+                                    paint_flags[i] = (get_weight(i, rr) < 0.5)
                                 end
                             end
                         end
                     end
 
-                    for pos,is_solid in pairs(paint_flags) do
-                        ctx.draw(pos, not is_solid and minetest.CONTENT_AIR or ctx.get_paint())
+                    for pos,is_air in pairs(paint_flags) do
+                        if is_air ~= (data[pos] == minetest.CONTENT_AIR) then
+                            ctx.draw(pos, is_air and minetest.CONTENT_AIR or ctx.get_paint())
+                        end
                     end
                 end,
             }
