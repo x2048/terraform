@@ -812,6 +812,7 @@ local light = {
             end
         end
         self.players[player:get_player_name()] = nil
+        self:tick()
     end,
     tick = function(self)
         for name,pl in pairs(self.players) do
@@ -838,8 +839,7 @@ local light = {
         -- process queues
         while #self.queues.dark > 0 do
             local box = table.remove(self.queues.dark, 1)
-            local vm = minetest.get_voxel_manip(box.min, box.max)
-            vm:write_to_map(true) -- fix the light
+            minetest.get_voxel_manip(box.min, box.max):write_to_map(true) -- fix the light
         end
 
         while #self.queues.light > 0 do
@@ -874,13 +874,10 @@ terraform:register_tool("light", {
     execute = function(itemstack, player, target)
         if player:get_day_night_ratio() ~= nil then
             player:override_day_night_ratio(nil)
+            light:remove_player(player)
         else
             player:override_day_night_ratio(1)
-        end
-        if light.players[player:get_player_name()] == nil then
             light:add_player(player)
-        else
-            light:remove_player(player)
         end
     end
 })
