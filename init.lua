@@ -750,16 +750,6 @@ terraform:register_tool("fixlight", {
     end
 })
 
---
---  Some helper functions needed for the light placement functionality
---
-local function vector_floor(v)
-    return vector.new(math.floor(v.x), math.floor(v.y), math.floor(v.z))
-end
-local function vector_min(v1, v2)
-    return vector.new(math.min(v1.x,v2.x), math.min(v1.y,v2.y), math.min(v1.z,v2.z))
-end
-
 local function box_diff(a, b)
     -- a - b for boxes a and b, both a { min = vector, max = vector }
     -- return 3 boxes
