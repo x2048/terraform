@@ -440,31 +440,31 @@ terraform:register_tool("brush", {
 			return false
 		end
 
-		-- Prepare flags
-		local flags = {}
+		-- Prepare modifiers
+		local modifiers = {}
 		if settings:get_int("modifiers_surface") == 1 then
-			table.insert(flags, function(i)
+			table.insert(modifiers, function(i)
 				if data[i] == minetest.CONTENT_AIR then return nil end
 				if a:position(i).y < maxp.y and data[i+a.ystride] == minetest.CONTENT_AIR then return i end
 				return nil
 			end)
 		end
 		if settings:get_int("modifiers_decor") == 1 then
-			table.insert(flags, function(i)
+			table.insert(modifiers, function(i)
 				if data[i] == minetest.CONTENT_AIR then return nil end
 				if a:position(i).y < maxp.y and data[i+a.ystride] == minetest.CONTENT_AIR then return i+a.ystride end
 				return nil
 			end)
 		end
 		if settings:get_int("modifiers_scatter") == 1 then
-			table.insert(flags, function(i)
+			table.insert(modifiers, function(i)
 				return math.random(1,1000) <= 50 and i or nil
 			end)
 		end
 
 		ctx.draw = function(i, paint)
 			if not ctx.in_mask(data[i]) then return end -- if not in mask, skip painting
-			for _,f in ipairs(flags) do
+			for _,f in ipairs(modifiers) do
 				i = f(i)
 				if not i then return end -- if i is nil, skip painting
 			end
