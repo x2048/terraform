@@ -420,6 +420,7 @@ terraform:register_tool("brush", {
 			table.insert(paint, minetest.CONTENT_AIR)
 		end
 
+		ctx.paint = paint
 		ctx.get_paint = function()
 			return paint[math.random(1, #paint)]
 		end
@@ -432,6 +433,7 @@ terraform:register_tool("brush", {
 			end
 		end
 
+		ctx.mask = mask
 		ctx.in_mask = function(cid)
 			if #mask == 0 then return true end
 			for i,v in ipairs(mask) do if v == cid then return true end end
@@ -542,6 +544,14 @@ terraform:register_tool("brush", {
 
 					local origin = a:indexp(target_pos)
 
+					local function is_solid(id)
+						if #ctx.mask > 0 then
+							return not ctx.in_mask(id)
+						else
+							return id ~= minetest.CONTENT_AIR
+						end
+					end
+
 					-- find deepest level (as negative)
 					local depth = 0
 					for x = -ctx.size_3d.x,ctx.size_3d.x do
@@ -553,7 +563,7 @@ terraform:register_tool("brush", {
 								for y = 0,-100,-1 do
 									-- stop if the bottom is hit
 									local p = origin + x + y * a.ystride + z * a.zstride
-									if not ctx.in_mask(data[p]) then
+									if is_solid(data[p]) then
 										if y < depth then depth = y end
 										break
 									end
@@ -577,10 +587,10 @@ terraform:register_tool("brush", {
 								for y = cutoff,depth,-1 do
 									i = origin + x + y * a.ystride + z * a.zstride
 
-									if ctx.in_mask(data[i]) then
-										ctx.draw(i)
-									else
+									if is_solid(data[i]) then
 										break --stop at the first non-mask
+									else
+										ctx.draw(i)
 									end
 								end
 							end
