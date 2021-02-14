@@ -370,7 +370,7 @@ terraform:register_tool("brush", {
     end,
 
     get_description = function(self, settings)
-        return "Terraform Brush ("..(settings:get_string("shape") or "shpere")..")\n"..
+        return "Terraform Brush ("..(settings:get_string("shape") or "sphere")..")\n"..
             "size "..(settings:get_int("size") or 0).."\n"..
             "paint "..(settings:get_string("paint")).."\n"..
             "mask "..(settings:get_string("mask"))
