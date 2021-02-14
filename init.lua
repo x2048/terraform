@@ -61,6 +61,9 @@ terraform = {
 	register_tool = function(self, name, spec)
 		spec.tool_name = name
 		self._tools[spec.tool_name] = spec
+		if spec.init then
+			spec:init()
+		end
 		minetest.register_tool("terraform:"..spec.tool_name, {
 			description = spec.description,
 			short_description = spec.short_description,
@@ -181,6 +184,11 @@ terraform:register_tool("brush", {
 
 	max_size = 15,
 
+	init = function(self)
+		for _,shape_fn in ipairs(self.shapes) do
+			self.shapes[shape_fn().name] = shape_fn
+		end
+	end,
 	render_config = function(self, player, settings)
 		local function selection(texture, selected)
 			if selected then return texture.."^terraform_selection.png" end
@@ -238,7 +246,8 @@ terraform:register_tool("brush", {
 			"container[0.5,0.5]".. -- shape
 			"label[0,0.5; Shape:]"
 		local pos = 0
-		for shape,_ in pairs(self.shapes) do
+		for _,shape_fn in ipairs(self.shapes) do
+			local shape = shape_fn().name -- Construct shape and extract the name
 			local x = pos % 3
 			local y = math.floor(pos / 3) + 1
 			spec = spec.."image_button["..x..","..y..";1,1;"..selection("terraform_shape_"..shape..".png",settings:get_string("shape") == shape)..";shape_"..shape..";]"
@@ -488,8 +497,9 @@ terraform:register_tool("brush", {
 
 	-- Definition of shapes
 	shapes = {
-		cube = function()
+		function()
 			return {
+				name = "cube",
 				get_bounds = function(self, player, target_pos, size_3d)
 					return vector.subtract(target_pos, size_3d), vector.add(target_pos, size_3d)
 				end,
@@ -500,8 +510,9 @@ terraform:register_tool("brush", {
 				end,
 			}
 		end,
-		sphere = function()
+		function()
 			return {
+				name = "sphere",
 				get_bounds = function(self, player, target_pos, size_3d)
 					return vector.subtract(target_pos, size_3d), vector.add(target_pos, size_3d)
 				end,
@@ -520,8 +531,9 @@ terraform:register_tool("brush", {
 				end,
 			}
 		end,
-		cylinder = function()
+		function()
 			return {
+				name = "cylinder",
 				get_bounds = function(self, player, target_pos, size_3d)
 					return vector.subtract(target_pos, size_3d), vector.add(target_pos, size_3d)
 				end,
@@ -540,8 +552,9 @@ terraform:register_tool("brush", {
 				end,
 			}
 		end,
-		plateau = function()
+		function()
 			return {
+				name = "plateau",
 				get_bounds = function(self, player, target_pos, size_3d)
 					-- look up to 100 meters down
 					return vector.subtract(target_pos, vector.new(size_3d.x, 100, size_3d.z)), vector.add(target_pos, vector.new(size_3d.x, 0, size_3d.z))
@@ -605,8 +618,9 @@ terraform:register_tool("brush", {
 				end
 			}
 		end,
-		smooth = function()
+		function()
 			return {
+				name = "smooth",
 				get_bounds = function(self, player, target_pos, size_3d)
 					return vector.subtract(target_pos, size_3d), vector.add(target_pos, size_3d)
 				end,
@@ -652,8 +666,9 @@ terraform:register_tool("brush", {
 				end,
 			}
 		end,
-		trowel = function()
+		function()
 			return {
+				name = "trowel",
 				get_bounds = function(self, player, target_pos, size_3d)
 					local pp = vector.floor(player:get_pos())
 					local minp,maxp = vector.subtract(target_pos, size_3d), vector.add(target_pos, size_3d)
