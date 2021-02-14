@@ -251,10 +251,10 @@ terraform:register_tool("brush", {
             "scrollbar[2,0;0.35,0.7;vertical;size_sb;"..(self.max_size - (settings:get_int("size") or 3)).."]"..
             "container_end[]"..
 
-            "container[0.5, 5]".. -- flags
-            "checkbox[0,0;flags_surface;Surface;"..(settings:get_int("flags_surface") == 1 and "true" or "false").."]"..
-            "checkbox[0,0.5;flags_scatter;Scatter;"..(settings:get_int("flags_scatter") == 1 and "true" or "false").."]"..
-            "checkbox[0,1;flags_decor;Decoration;"..(settings:get_int("flags_decor") == 1 and "true" or "false").."]"..
+            "container[0.5, 5]".. -- modifiers
+            "checkbox[0,0;modifiers_surface;Surface;"..(settings:get_int("modifiers_surface") == 1 and "true" or "false").."]"..
+            "checkbox[0,0.5;modifiers_scatter;Scatter;"..(settings:get_int("modifiers_scatter") == 1 and "true" or "false").."]"..
+            "checkbox[0,1;modifiers_decor;Decoration;"..(settings:get_int("modifiers_decor") == 1 and "true" or "false").."]"..
             "container_end[]"..
 
             "container[4,0.5]".. -- creative
@@ -324,14 +324,14 @@ terraform:register_tool("brush", {
         end
 
         -- Flags
-        if fields.flags_surface ~= nil then
-            settings:set_int("flags_surface", fields.flags_surface == "true" and 1 or 0)
+        if fields.modifiers_surface ~= nil then
+            settings:set_int("modifiers_surface", fields.modifiers_surface == "true" and 1 or 0)
         end
-        if fields.flags_scatter ~= nil then
-            settings:set_int("flags_scatter", fields.flags_scatter == "true" and 1 or 0)
+        if fields.modifiers_scatter ~= nil then
+            settings:set_int("modifiers_scatter", fields.modifiers_scatter == "true" and 1 or 0)
         end
-        if fields.flags_decor ~= nil then
-            settings:set_int("flags_decor", fields.flags_decor == "true" and 1 or 0)
+        if fields.modifiers_decor ~= nil then
+            settings:set_int("modifiers_decor", fields.modifiers_decor == "true" and 1 or 0)
         end
 
         -- Search
@@ -440,21 +440,21 @@ terraform:register_tool("brush", {
 
         -- Prepare flags
         local flags = {}
-        if settings:get_int("flags_surface") == 1 then
+        if settings:get_int("modifiers_surface") == 1 then
             table.insert(flags, function(i)
                 if data[i] == minetest.CONTENT_AIR then return nil end
                 if a:position(i).y < maxp.y and data[i+a.ystride] == minetest.CONTENT_AIR then return i end
                 return nil
             end)
         end
-        if settings:get_int("flags_decor") == 1 then
+        if settings:get_int("modifiers_decor") == 1 then
             table.insert(flags, function(i)
                 if data[i] == minetest.CONTENT_AIR then return nil end
                 if a:position(i).y < maxp.y and data[i+a.ystride] == minetest.CONTENT_AIR then return i+a.ystride end
                 return nil
             end)
         end
-        if settings:get_int("flags_scatter") == 1 then
+        if settings:get_int("modifiers_scatter") == 1 then
             table.insert(flags, function(i)
                 return math.random(1,1000) <= 50 and i or nil
             end)
