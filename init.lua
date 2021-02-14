@@ -94,9 +94,9 @@ terraform = {
 		end
 
 		local itemstack = player:get_wielded_item()
-		self._latest_form = { id = "terraform:props:"..tool_name, tool_name = tool_name}
+		self._latest_form = { id = "terraform:props:"..tool_name..math.random(1,100000), tool_name = tool_name}
 		local formspec = self._tools[tool_name]:render_config(player, itemstack:get_meta())
-		minetest.show_formspec(player:get_player_name(), terraform._latest_form.id, formspec)
+		minetest.show_formspec(player:get_player_name(), self._latest_form.id, formspec)
 	end,
 
 	get_inventory = function(player)
@@ -110,7 +110,6 @@ terraform = {
 		local result = {}
 		for part in s:gmatch("[^,]+") do
 			table.insert(result, part)
-
 		end
 		while #result < size do table.insert(result, "") end
 		return result
