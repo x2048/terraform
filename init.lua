@@ -648,7 +648,7 @@ terraform:register_tool("brush", {
                 end,
             }
         end,
-        cut = function()
+        trowel = function()
             return {
                 get_bounds = function(self, player, target_pos, size_3d)
                     local pp = vector.floor(player:get_pos())
