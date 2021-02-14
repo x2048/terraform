@@ -334,7 +334,7 @@ terraform:register_tool("brush", {
 				settings:set_int("size", math.min(math.max(self.max_size - tonumber(e.value), 0), self.max_size))
 				refresh = true
 			end
-		elseif fields.size ~= nil then
+		elseif fields.size ~= nil and tonumber(fields.size) ~= nil then
 			settings:set_int("size", math.min(math.max(tonumber(fields.size), 0), self.max_size))
 		end
 
