@@ -36,7 +36,10 @@ local history = {
 		end
 		vm:set_data(data)
 		vm:write_to_map(false)
-	end 
+	end,
+	forget = function(self, player)
+		self._lists[player:get_player_name()] = nil
+	end
 }
 
 minetest.register_on_dignode(function(pos,oldnode,player)
@@ -44,6 +47,9 @@ minetest.register_on_dignode(function(pos,oldnode,player)
 end)
 minetest.register_on_placenode(function(pos,newnode,player)
 	history:capture(player, {minetest.CONTENT_AIR}, VoxelArea:new({MinEdge=pos,MaxEdge=pos}), pos, pos)
+end)
+minetest.register_on_leaveplayer(function(player)
+	history:forget(player)
 end)
 
 -- public module API
