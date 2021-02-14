@@ -257,7 +257,7 @@ terraform:register_tool("brush", {
 			"scrollbar[2,0;0.35,0.7;vertical;size_sb;"..(self.max_size - (settings:get_int("size") or 3)).."]"..
 			"container_end[]"..
 
-			"container[0.5, 5]".. -- modifiers
+			"container[0.5, 5.5]".. -- modifiers
 			"checkbox[0,0;modifiers_surface;Surface;"..(settings:get_int("modifiers_surface") == 1 and "true" or "false").."]"..
 			"checkbox[0,0.5;modifiers_scatter;Scatter;"..(settings:get_int("modifiers_scatter") == 1 and "true" or "false").."]"..
 			"checkbox[0,1;modifiers_decor;Decoration;"..(settings:get_int("modifiers_decor") == 1 and "true" or "false").."]"..
@@ -286,7 +286,7 @@ terraform:register_tool("brush", {
 
 		-- Color tags
 		spec = spec..
-			"container[0.5, 6]"..
+			"container[0.5, 8]"..
 			"label[0,0.5; Color Tag]"
 		local count = 0
 		local size = 0.5
