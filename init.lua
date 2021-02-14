@@ -242,6 +242,7 @@ terraform:register_tool("brush", {
 			local x = pos % 3
 			local y = math.floor(pos / 3) + 1
 			spec = spec.."image_button["..x..","..y..";1,1;"..selection("terraform_shape_"..shape..".png",settings:get_string("shape") == shape)..";shape_"..shape..";]"
+			spec = spec.."tooltip[shape_"..shape..";"..shape.."]"
 			pos = pos + 1
 		end
 
