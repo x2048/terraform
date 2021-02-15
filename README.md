@@ -13,7 +13,9 @@ editing environment that can also be used by children.
 
 The mod is implemented as a set of items that are added to your creative inventory. Search for _"terraform"_ in the inventory to find all the tools.
 
-### Brush (terraform:brush)
+### Brush `terraform:brush`
+
+![(brush icon)](images/terraform_tool_brush_green.png "Brush tool icon") 
 
 Paint the world with broad strokes. Use the brush to add, remove or reshape the terrain. Features:
 
@@ -32,23 +34,29 @@ Paint the world with broad strokes. Use the brush to add, remove or reshape the 
 
 How to use:
 
-* "Punch" (Left click) - reconfigure the tool at hand.
+* "Punch" (Left click) - reconfigure the brush you hold
 * "Place" (Right click) - use the brush.
 * "Use" + "Place" (E + Right click) - undo.
 
-### Undo (terraform:undo)
+### Undo `terraform:undo`
+
+![(undo icon)](textures/terraform_tool_undo.png "Undo tool icon") 
 
 The name speaks for itself. The tool adds an in-memory undo engine that captures edits of each player and allows them to undo their changes to the world.
 
 "Place" (Right click) to undo one change, hold to undo many changes (fun to watch).
 
-### Light (terraform:light)
+### Light `terraform:light`
+
+![(light icon)](textures/terraform_tool_light.png "Light tool icon") 
 
 Turns on light to work comfortably both during night and deep in the caves.
 
 "Place" (Right click) to toggle.
 
-### Light fixer (terraform:fixlight)
+### Light fixer `terraform:fixlight`
+
+![(light fixer icon)](textures/terraform_tool_fix_light.png "Light fixer tool icon") 
 
 This is a tiny helper tool to correct light and shadow problems in the world, which may happen when painting the world with Terraform Brush.
 
