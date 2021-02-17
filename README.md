@@ -4,14 +4,15 @@ A mod for [Minetest](https://www.minetest.net/).
 
 ## Description
 
-Toolbox for creating custom landscapes in Minetest worlds.
-Initially inspired by [WorldEdit for Minecraft](https://worldedit.enginehub.org/en/latest/) and
-[WorldEdit for Minetest](https://github.com/Uberi/Minetest-WorldEdit), the goal is to create
-a comfortable editing environment that can also be used by children.
+This mod provides a toolbox for creating custom landscapes in Minetest worlds.
+The project was initially inspired by [WorldEdit for Minecraft](https://enginehub.org/worldedit/)
+and [WorldEdit for Minetest](https://github.com/Uberi/Minetest-WorldEdit), and has been
+both exploration of Minetest mod API and user interface capabilities and an attempt to
+create a simple and comfortable editing experience.
 
 ## Tools and features
 
-The mod is implemented as a set of items that are added to your creative inventory.
+The mod is implemented as a set of tool items that are added to your creative inventory.
 Search for _"terraform"_ in the inventory to find all the tools.
 
 ### Brush `terraform:brush`
@@ -23,14 +24,14 @@ you can use to add, remove or reshape the terrain. The brush features:
 
 * Basic shapes: **Sphere**, **Cube** and **Cylinder**.
 * Advanced modes:
-  * **Plateau** mode for building cliffs and cascades up to 100 blocks high.
+  * **Plateau** mode for building cliffs and cascades.
   * **Smooth** mode to remove small speckles, smoothen descends and add rounded corners.
   * **Trowel** mode to reshape material.
 * Visual configuration dialog with ability to search or browse for blocks.
 * Painting with random patterns using multiple block types.
 * Mask support for conditional painting and replacing.
-* Undo (see below)
-* A number of drawing modifiers:
+* Multilevel undo (see below)
+* Drrawing modifiers:
   * **Scatter** - randomly fill 5% of the paintable blocks.
   * **Surface** - only change blocks under air.
   * **Decorate** - only place new blocks on top of surface blocks.
@@ -53,7 +54,7 @@ The name speaks for itself. The tool adds an in-memory undo engine that captures
 
 ![(light icon)](textures/terraform_tool_light.png "Light tool icon") 
 
-Turns on light to work comfortably both during night and deep in the caves.
+Turns on the light to work comfortably both during night and deep in the caves.
 
 "Place" (Right click) to toggle.
 
