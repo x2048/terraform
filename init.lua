@@ -1,3 +1,14 @@
+-- Privilege
+minetest.register_privilege("terraform", "Ability to use terraform tools")
+
+local function privileged(player, f, verbose)
+	if minetest.check_player_privs(player, "terraform") then
+		return f()
+	elseif verbose then
+		minetest.chat_send_player(player:get_player_name(), "You need terraform privilege to perform the action")
+	end
+end
+
 -- In-memory history/undo engine
 local history = {
 	_lists = {},
@@ -43,10 +54,14 @@ local history = {
 }
 
 minetest.register_on_dignode(function(pos,oldnode,player)
-	history:capture(player, {minetest.get_content_id(oldnode.name)}, VoxelArea:new({MinEdge=pos,MaxEdge=pos}), pos, pos)
+	privileged(player, function()
+		history:capture(player, {minetest.get_content_id(oldnode.name)}, VoxelArea:new({MinEdge=pos,MaxEdge=pos}), pos, pos)
+	end)
 end)
 minetest.register_on_placenode(function(pos,newnode,player)
-	history:capture(player, {minetest.CONTENT_AIR}, VoxelArea:new({MinEdge=pos,MaxEdge=pos}), pos, pos)
+	privileged(player, function()
+		history:capture(player, {minetest.CONTENT_AIR}, VoxelArea:new({MinEdge=pos,MaxEdge=pos}), pos, pos)
+	end)
 end)
 minetest.register_on_leaveplayer(function(player)
 	history:forget(player)
@@ -74,18 +89,24 @@ terraform = {
 			liquids_pointable = true,
 			node_dig_prediction = "",
 			on_use = function(itemstack, player, target)
-				terraform:show_config(player, spec.tool_name, itemstack)
+				privileged(player, function()
+					terraform:show_config(player, spec.tool_name, itemstack)
+				end, true)
 			end,
 			on_secondary_use = function(itemstack, player, target)
-				terraform:show_config(player, spec.tool_name, itemstack)
+				privileged(player, function()
+					terraform:show_config(player, spec.tool_name, itemstack)
+				end, true)
 			end,
 			on_place = function(itemstack, player, target)
-				if player:get_player_control().aux1 then
-					history:undo(player)
-				else
-					spec:execute(player, target, itemstack:get_meta())
-				end
-				return itemstack
+				return privileged(player, function()
+					if player:get_player_control().aux1 then
+						history:undo(player)
+					else
+						spec:execute(player, target, itemstack:get_meta())
+					end
+					return itemstack
+				end, true)
 			end,
 		})
 	end,
@@ -136,32 +157,34 @@ terraform = {
 
 -- Handle input from forms
 minetest.register_on_player_receive_fields(function(player, formname, fields)
-	if terraform._latest_form and formname == terraform._latest_form.id then
-		local tool_name = terraform._latest_form.tool_name
-		local tool = terraform._tools[tool_name]
-		if not tool.config_input then
-			return
+	privileged(player, function()
+		if terraform._latest_form and formname == terraform._latest_form.id then
+			local tool_name = terraform._latest_form.tool_name
+			local tool = terraform._tools[tool_name]
+			if not tool.config_input then
+				return
+			end
+
+			local itemstack = player:get_wielded_item()
+			local reload = tool:config_input(player, fields, itemstack:get_meta())
+
+			-- update tool description in the inventory
+			if tool.get_description then
+				itemstack:get_meta():set_string("description", tool:get_description(itemstack:get_meta()))
+			end
+
+			player:set_wielded_item(itemstack)
+
+			if fields.quit then
+				terraform._latest_form = nil
+				return
+			end
+
+			if reload then
+				terraform:show_config(player, tool_name, itemstack)
+			end
 		end
-
-		local itemstack = player:get_wielded_item()
-		local reload = tool:config_input(player, fields, itemstack:get_meta())
-
-		-- update tool description in the inventory
-		if tool.get_description then
-			itemstack:get_meta():set_string("description", tool:get_description(itemstack:get_meta()))
-		end
-
-		player:set_wielded_item(itemstack)
-
-		if fields.quit then
-			terraform._latest_form = nil
-			return
-		end
-
-		if reload then
-			terraform:show_config(player, tool_name, itemstack)
-		end
-	end
+	end)
 end)
 
 minetest.register_on_leaveplayer(function(player)
