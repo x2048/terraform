@@ -31,7 +31,7 @@ you can use to add, remove or reshape the terrain. The brush features:
 * Painting with random patterns using multiple block types.
 * Mask support for conditional painting and replacing.
 * Multilevel undo (see below)
-* Drrawing modifiers:
+* Drawing modifiers:
   * **Scatter** - randomly fill 5% of the paintable blocks.
   * **Surface** - only change blocks under air.
   * **Decorate** - only place new blocks on top of surface blocks.
@@ -46,7 +46,8 @@ How to use:
 
 ![(undo icon)](textures/terraform_tool_undo.png "Undo tool icon") 
 
-The name speaks for itself. The tool adds an in-memory undo engine that captures edits of each player and allows them to undo their changes to the world.
+The tool adds an in-memory undo engine that captures both edits with the Brush tool and
+usual 'digs' and 'places'.
 
 "Place" (Right click) to undo one change, hold to undo many changes (fun to watch).
 
@@ -65,4 +66,23 @@ Turns on the light to work comfortably both during night and deep in the caves.
 This is a tiny helper tool to correct light and shadow problems in the world, which may happen when painting the world with Terraform Brush.
 
 "Place" (Right click) to recalculate light in a cuboid within 100 blocks from the target.
+
+## Before you start
+
+Here are important notes to know before you enable the mod on your server:
+
+* You need "terraform" privilege to be able to use the tools. As server owner, grant
+  terraform privilege only to trusted users.
+* Several players using undo very close to each other may cause unexpected results.
+* Current implementation of the undo engine consumes server memory and will lead
+  to server crash if used for a very long time or by many players at once.
+* Light recalculation, flow of liquids and falling of physical blocks (e.g. sand) are
+  not triggered by the mod's tools and are not supported by the undo engine.
+	You can fix the light with the Light fixer tool, trigger water flow by placing a water
+	source and cause blocks to fall by digging one of them.
+
+## Installation
+
+Unpack the release package into `mods/terraform` folder of your Minetest installation.
+Read more about installing mods in Minetest [here](https://wiki.minetest.net/Installing_Mods).
 
