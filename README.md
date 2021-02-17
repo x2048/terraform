@@ -6,18 +6,20 @@ A mod for [Minetest](https://www.minetest.net/).
 
 Toolbox for creating custom landscapes in Minetest worlds.
 Initially inspired by [WorldEdit for Minecraft](https://worldedit.enginehub.org/en/latest/) and
-[WorldEdit for Minetest](https://github.com/Uberi/Minetest-WorldEdit), the goal is to create a comfortable 
-editing environment that can also be used by children.
+[WorldEdit for Minetest](https://github.com/Uberi/Minetest-WorldEdit), the goal is to create
+a comfortable editing environment that can also be used by children.
 
 ## Tools and features
 
-The mod is implemented as a set of items that are added to your creative inventory. Search for _"terraform"_ in the inventory to find all the tools.
+The mod is implemented as a set of items that are added to your creative inventory.
+Search for _"terraform"_ in the inventory to find all the tools.
 
 ### Brush `terraform:brush`
 
 ![(brush icon)](images/terraform_tool_brush_green.png "Brush tool icon") 
 
-Paint the world with broad strokes. Use the brush to add, remove or reshape the terrain. Features:
+Paint the world with broad strokes. This is the primary tool of Terraform that
+you can use to add, remove or reshape the terrain. The brush features:
 
 * Basic shapes: **Sphere**, **Cube** and **Cylinder**.
 * Advanced modes:
@@ -25,8 +27,9 @@ Paint the world with broad strokes. Use the brush to add, remove or reshape the 
   * **Smooth** mode to remove small speckles, smoothen descends and add rounded corners.
   * **Trowel** mode to reshape material.
 * Visual configuration dialog with ability to search or browse for blocks.
+* Painting with random patterns using multiple block types.
 * Mask support for conditional painting and replacing.
-* Integration with Undo engine (see below)
+* Undo (see below)
 * A number of drawing modifiers:
   * **Scatter** - randomly fill 5% of the paintable blocks.
   * **Surface** - only change blocks under air.
@@ -60,5 +63,5 @@ Turns on light to work comfortably both during night and deep in the caves.
 
 This is a tiny helper tool to correct light and shadow problems in the world, which may happen when painting the world with Terraform Brush.
 
-"Place" (Right click) to recalculate light within 100 blocks manhattan distance from the target.
+"Place" (Right click) to recalculate light in a cuboid within 100 blocks from the target.
 
