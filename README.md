@@ -83,6 +83,15 @@ Here are important notes to know before you enable the mod on your server:
 
 ## Installation
 
-Unpack the release package into `mods/terraform` folder of your Minetest installation.
+Unpack the release package into `mods/terraform` folder of your Minetest installation and enable
+`terraform` mod in the world properties.
+
 Read more about installing mods in Minetest [here](https://wiki.minetest.net/Installing_Mods).
 
+## Licenses
+
+Code copyright (c) 2021 Dmitry Kostenko <codeforsmile@gmail.com>.
+
+The code is licensed under AGPL-3.0 license, see the full license text in LICENSE.txt.
+
+Images are licensed under CC0 1.0 Universal license https://creativecommons.org/publicdomain/zero/1.0/.

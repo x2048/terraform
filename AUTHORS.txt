@@ -1,4 +1,4 @@
-List of contributors by the date of first contribution
+List of contributors by the time of first contribution
 
 Dmitry Kostenko <codeforsmile@gmail.com>
 
