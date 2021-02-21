@@ -205,6 +205,9 @@ terraform:register_tool("brush", {
 			   "darkred", "orange", "darkgreen", "mediumblue",
 			   "violet", "wheat", "olive", "dodgerblue" },
 
+	-- Modifier names and labels
+	modifiers = {{n="surface",l="Surface"}, {n="scatter",l="Scatter"}, {n="decor",l="Decoration"}, {n="landslide",l="Landslide"}, {n="flat", l="Flat"}},
+
 	max_size = 15,
 
 	init = function(self)
@@ -289,10 +292,14 @@ terraform:register_tool("brush", {
 			"scrollbar[2,0;0.35,0.7;vertical;size_sb;"..(self.max_size - (settings:get_int("size") or 3)).."]"..
 			"container_end[]"..
 
-			"container[0.5, 5.5]".. -- modifiers
-			"checkbox[0,0;modifiers_surface;Surface;"..(settings:get_int("modifiers_surface") == 1 and "true" or "false").."]"..
-			"checkbox[0,0.5;modifiers_scatter;Scatter;"..(settings:get_int("modifiers_scatter") == 1 and "true" or "false").."]"..
-			"checkbox[0,1;modifiers_decor;Decoration;"..(settings:get_int("modifiers_decor") == 1 and "true" or "false").."]"..
+			"container[0.5, 5.5]" -- modifiers
+		pos = 0
+	  for _,modifier in ipairs(self.modifiers) do
+			spec = spec ..
+				"checkbox[0,"..pos..";modifiers_"..modifier.n..";"..modifier.l..";"..(settings:get_int("modifiers_"..modifier.n) == 1 and "true" or "false").."]"
+			pos = pos + 0.5
+		end
+		spec = spec ..
 			"container_end[]"..
 
 			"container[4,0.5]".. -- creative
@@ -361,15 +368,11 @@ terraform:register_tool("brush", {
 			settings:set_int("size", math.min(math.max(tonumber(fields.size), 0), self.max_size))
 		end
 
-		-- Flags
-		if fields.modifiers_surface ~= nil then
-			settings:set_int("modifiers_surface", fields.modifiers_surface == "true" and 1 or 0)
-		end
-		if fields.modifiers_scatter ~= nil then
-			settings:set_int("modifiers_scatter", fields.modifiers_scatter == "true" and 1 or 0)
-		end
-		if fields.modifiers_decor ~= nil then
-			settings:set_int("modifiers_decor", fields.modifiers_decor == "true" and 1 or 0)
+		-- Modifiers
+	  for _,modifier in ipairs(self.modifiers) do
+			if fields["modifiers_"..modifier.n] ~= nil then
+				settings:set_int("modifiers_"..modifier.n, fields["modifiers_"..modifier.n] == "true" and 1 or 0)
+			end
 		end
 
 		-- Search
@@ -425,6 +428,10 @@ terraform:register_tool("brush", {
 		-- Define size in 3d
 		local size = settings:get_int("size") or 3
 		local size_3d = vector.new(size, size, size)
+		if settings:get_int("modifiers_flat") == 1 then
+			size_3d = vector.new(size_3d.x, 0, size_3d.z)
+		end
+
 
 		-- Pick a shape
 		local shape_name = settings:get_string("shape") or "sphere"
@@ -432,14 +439,35 @@ terraform:register_tool("brush", {
 		local shape = self.shapes[shape_name]()
 
 		-- Define working area and load state
-		local minp,maxp = shape:get_bounds(player, target_pos, size_3d)
+		local minp, maxp = shape:get_bounds(player, target_pos, size_3d)
+		local minc, maxc = vector.new(minp), vector.new(maxp)
+		if settings:get_int("modifiers_landslide") == 1 then
+			minc.y = minc.y - 100
+		end
 		local v = minetest.get_voxel_manip()
-		local minv, maxv = v:read_from_map(minp, maxp)
+		local minv, maxv = v:read_from_map(minc, maxc)
 		local a = VoxelArea:new({MinEdge = minv, MaxEdge = maxv })
 
-		-- Get data and capture history
+		-- Get data
 		local data	= v:get_data()
-		history:capture(player, data, a, minp, maxp)
+
+		-- Capture history. If landslide enabled, find the lowest Y with air
+		minc.y = minp.y
+		if settings:get_int("modifiers_landslide") == 1 then
+			for x = minp.x, maxp.x do
+				for z = minp.z, maxp.z do
+					for y = target_pos.y, target_pos.y - 100, -1 do
+						if data[a:index(x, y, z)] ~= minetest.CONTENT_AIR then
+							if y + 1 < minc.y then
+								minc.y = y + 1
+							end
+							break
+						end
+					end
+				end
+			end
+		end
+		history:capture(player, data, a, minc, maxc)
 
 		-- Set up context
 		local ctx = {
@@ -480,6 +508,14 @@ terraform:register_tool("brush", {
 
 		-- Prepare modifiers
 		local modifiers = {}
+		if settings:get_int("modifiers_landslide") == 1 then
+			table.insert(modifiers, function(i)
+				while data[i] == minetest.CONTENT_AIR and a:position(i).y > minc.y do
+					i = i - a.ystride
+				end
+				return i + a.ystride
+			end)
+		end
 		if settings:get_int("modifiers_surface") == 1 then
 			table.insert(modifiers, function(i)
 				if data[i] == minetest.CONTENT_AIR then return nil end
