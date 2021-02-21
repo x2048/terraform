@@ -67,6 +67,15 @@ This is a tiny helper tool to correct light and shadow problems in the world, wh
 
 "Place" (Right click) to recalculate light in a cuboid within 100 blocks from the target.
 
+### Teleport `terraform:teleport`
+
+![(teleport icon)](textures/terraform_tool_teleport.png "Teleport tool icon") 
+
+This tool teleports you to the position above the pointed block, preserving your elevation above the ground,
+similar to flying with a helicopter. Click and hold to travel large distances.
+
+"Place" (Right click) to use the teleport.
+
 ## Before you start
 
 Here are important notes to know before you enable the mod on your server:
