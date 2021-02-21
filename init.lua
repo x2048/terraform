@@ -924,3 +924,41 @@ local function place_lights()
 end
 minetest.after(0.5, place_lights)
 
+
+terraform:register_tool("teleport", {
+	description = "Terraform Teleport\n\nTravel fast",
+	short_description = "Terraform Teleport",
+	inventory_image = "terraform_tool_teleport.png",
+	execute = function(itemstack, player, target)
+		-- Get position
+		local target_pos = minetest.get_pointed_thing_position(target)
+		if not target_pos then
+			return
+		end
+
+		local player_pos = vector.floor(player:get_pos())
+		local probe = { x = player_pos.x, y = player_pos.y, z = player_pos.z }
+		while minetest.get_node(probe).name == "air" do
+			probe.y = probe.y - 1
+		end
+		local vm = minetest.get_voxel_manip()
+		local mine,maxe = vm:read_from_map(vector.add(target_pos, vector.new(0, -128, 0)), vector.add(target_pos, vector.new(0, 128 + player_pos.y - probe.y, 0)))
+		local va = VoxelArea:new({MinEdge=mine, MaxEdge=maxe})
+		local data = vm:get_data()
+		local i = va:indexp(target_pos)
+		while data[i] ~= minetest.CONTENT_AIR do --Move to the topmost block
+			i = i + va.ystride
+		end
+		i = i + va.ystride * (player_pos.y - probe.y - 1) 
+
+		for delta = 0,128 do -- Try up to 128 meters up or down
+			for sign = -1,1,2 do
+				if data[i + va.ystride * delta * sign] == minetest.CONTENT_AIR and data[i + va.ystride * (1 + delta * sign)] == minetest.CONTENT_AIR then
+					result = va:position(i + va.ystride * delta * sign)
+					player:set_pos(result)
+					return
+				end
+			end
+		end
+	end
+})
