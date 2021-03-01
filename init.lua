@@ -510,10 +510,10 @@ terraform:register_tool("brush", {
 		local modifiers = {}
 		if settings:get_int("modifiers_landslide") == 1 then
 			table.insert(modifiers, function(i)
-				while data[i] == minetest.CONTENT_AIR and a:position(i).y > minc.y do
+				while data[i - a.ystride] == minetest.CONTENT_AIR and a:position(i).y > minc.y do
 					i = i - a.ystride
 				end
-				return i + a.ystride
+				return i
 			end)
 		end
 		if settings:get_int("modifiers_surface") == 1 then
