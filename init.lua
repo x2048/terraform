@@ -779,7 +779,6 @@ terraform:register_tool("brush", {
 		end,
 	}
 })
-minetest.register_alias("terraform:sculptor", "terraform:brush")
 
 -- Colorize brush when putting to inventory
 minetest.register_on_player_inventory_action(function(player,action,inventory,inventory_info)
