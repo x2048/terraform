@@ -783,7 +783,7 @@ minetest.register_alias("terraform:sculptor", "terraform:brush")
 
 -- Colorize brush when putting to inventory
 minetest.register_on_player_inventory_action(function(player,action,inventory,inventory_info)
-	if inventory_info.listname ~= "main" or inventory_info.stack:get_name() ~= "terraform:brush" then
+	if action ~= "put" or inventory_info.listname ~= "main" or inventory_info.stack:get_name() ~= "terraform:brush" then
 		return
 	end
 	local stack = inventory_info.stack
