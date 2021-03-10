@@ -143,7 +143,7 @@ terraform = {
 		-- Retrun: a comma-separated list of items
 		local result = ""
 		for k,v in pairs(list) do
-			if v.get_name ~= nil then v = v:get_name() end -- ItemStack to string
+			if v.get_name ~= nil then v = v:to_string() end -- ItemStack to string
 			if v ~= "" then
 				if string.len(result) > 0 then
 					result = result..","
@@ -222,16 +222,38 @@ terraform:register_tool("brush", {
 		end
 
 		local inventory = minetest.create_detached_inventory("terraform."..player:get_player_name(), {
+
 			allow_move = function(inv,source,sindex,dest,dindex,count)
 				if source == "palette" and dest ~= "palette" then
-					inv:set_stack(dest,dindex, inv:get_stack(source, sindex))
+					local source_stack = inv:get_stack(source, sindex)
+					local dest_stack = inv:get_stack(dest,dindex)
+
+					source_stack:set_count(count)
+
+					if dest_stack:get_name() == source_stack:get_name() then
+						dest_stack:add_item(source_stack)
+					else
+						dest_stack = source_stack
+					end
+					inv:set_stack(dest,dindex,dest_stack)
+					inv:set_stack(source,sindex,source_stack:get_name().." "..(source_stack:get_definition().stack_max or minetest.settings["default_stack_max"]))
 					return 0
 				elseif dest == "palette" and source ~= "palette" then
-					inv:set_stack(source, sindex, "")
+					local stack = inv:get_stack(source, sindex, "")
+					stack:take_item(count)
+					inv:set_stack(source, sindex, stack)
+					return 0
+				elseif source == "palette" and dest == "palette" then
 					return 0
 				end
 				return count
-			end
+			end,
+			allow_take = function(inv,list,index,stack)
+				if list == "palette" then
+					return -1
+				end
+				return 1
+			end,
 		})
 
 		local palette = {}
@@ -243,7 +265,7 @@ terraform:register_tool("brush", {
 				if skip > 0 then
 					skip = skip - 1
 				else
-					table.insert(palette, k)
+					table.insert(palette, k.." "..(ItemStack(k):get_definition().stack_max or minetest.settings["default_stack_max"]))
 					if #palette >= 40 then
 						break
 					end
@@ -477,25 +499,34 @@ terraform:register_tool("brush", {
 
 		-- Prepare Paint
 		local paint = {}
+		local boundary = 0
 		for i,v in ipairs(terraform.string_to_list(settings:get_string("paint"), 10)) do
 			if v ~= "" then
-				table.insert(paint, minetest.get_content_id(v))
+				local stack = ItemStack(v)
+				boundary = boundary + stack:get_count()
+				table.insert(paint, { id = minetest.get_content_id(stack:get_name()), boundary = boundary})
 			end
 		end
 		if #paint == 0 then
-			table.insert(paint, minetest.CONTENT_AIR)
+			table.insert(paint, { id = minetest.CONTENT_AIR, boundary = 1 })
 		end
 
 		ctx.paint = paint
 		ctx.get_paint = function()
-			return paint[math.random(1, #paint)]
+			local sample = math.random(1, paint[#paint].boundary)
+			for _,v in ipairs(paint) do
+				if sample < v.boundary then
+					return v.id
+				end
+			end
+			return paint[#paint].id
 		end
 
 		-- Prepare Mask
 		local mask = {}
 		for i,v in ipairs(terraform.string_to_list(settings:get_string("mask"), 10)) do
 			if v ~= "" then
-				table.insert(mask, minetest.get_content_id(v))
+				table.insert(mask, minetest.get_content_id(ItemStack(v):get_name()))
 			end
 		end
 
