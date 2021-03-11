@@ -28,13 +28,15 @@ you can use to add, remove or reshape the terrain. The brush features:
   * **Smooth** mode to remove small speckles, smoothen descends and add rounded corners.
   * **Trowel** mode to reshape material.
 * Visual configuration dialog with ability to search or browse for blocks.
-* Painting with random patterns using multiple block types.
+* Painting with random weighted patterns of materials. Use stacks to specify probabilities of materials in the pattern.
 * Mask support for conditional painting and replacing.
 * Multilevel undo (see below)
 * Drawing modifiers:
   * **Scatter** - randomly fill 5% of the paintable blocks.
   * **Surface** - only change blocks under air.
   * **Decorate** - only place new blocks on top of surface blocks.
+  * **Landslide** - simulate falling of the nodes on the ground.
+  * **Flat** - make the shape one node high.
 
 How to use:
 
