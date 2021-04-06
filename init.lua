@@ -2,10 +2,12 @@
 minetest.register_privilege("terraform", "Ability to use terraform tools")
 
 local function privileged(player, f, verbose)
-	if minetest.check_player_privs(player, "terraform") then
-		return f()
-	elseif verbose then
-		minetest.chat_send_player(player:get_player_name(), "You need terraform privilege to perform the action")
+	if player:get_player_name() ~= "" then
+		if minetest.check_player_privs(player, "terraform") then
+			return f()
+		elseif verbose then
+			minetest.chat_send_player(player:get_player_name(), "You need terraform privilege to perform the action")
+		end
 	end
 end
 
