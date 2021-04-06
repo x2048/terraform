@@ -115,14 +115,18 @@ terraform = {
 
 	-- show configuration form for the specific tool
 	show_config = function(self, player, tool_name)
-		if not self._tools[tool_name].render_config then
+		if self.blocked or not self._tools[tool_name].render_config then
 			return
 		end
 
 		local itemstack = player:get_wielded_item()
 		self._latest_form = { id = "terraform:props:"..tool_name..math.random(1,100000), tool_name = tool_name}
 		local formspec = self._tools[tool_name]:render_config(player, itemstack:get_meta())
-		minetest.show_formspec(player:get_player_name(), self._latest_form.id, formspec)
+		self.blocked = true
+		minetest.after(0.25, function()
+			minetest.show_formspec(player:get_player_name(), self._latest_form.id, formspec)
+			self.blocked = false
+		end)
 	end,
 
 	get_inventory = function(player)
