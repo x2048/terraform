@@ -69,6 +69,11 @@ minetest.register_on_leaveplayer(function(player)
 	history:forget(player)
 end)
 
+-- Quirks for backward compatibility
+quirks = {
+	is_53_plus = minetest.features.object_step_has_moveresult
+}
+
 -- public module API
 terraform = {
 	_tools = {},
@@ -122,11 +127,15 @@ terraform = {
 		local itemstack = player:get_wielded_item()
 		self._latest_form = { id = "terraform:props:"..tool_name..math.random(1,100000), tool_name = tool_name}
 		local formspec = self._tools[tool_name]:render_config(player, itemstack:get_meta())
-		self.blocked = true
-		minetest.after(0.25, function()
+		if quirks.is_53_plus then
 			minetest.show_formspec(player:get_player_name(), self._latest_form.id, formspec)
-			self.blocked = false
-		end)
+		else
+			self.blocked = true
+			minetest.after(0.25, function()
+				minetest.show_formspec(player:get_player_name(), self._latest_form.id, formspec)
+				self.blocked = false
+			end)
+		end
 	end,
 
 	get_inventory = function(player)
@@ -289,11 +298,11 @@ terraform:register_tool("brush", {
 		inventory:set_list("mask", mask)
 
 		spec = 
-			"formspec_version[3]"..
 			"size[17,12]"..
 			"position[0.5,0.45]"..
 			"anchor[0.5,0.5]"..
 			"no_prepend[]"..
+			"real_coordinates[true]"..
 
 			"button_exit[14.5,10.5;2,1;quit;Close]".. -- Close button !Remember to offset when form size changes
 
@@ -360,10 +369,13 @@ terraform:register_tool("brush", {
 		for _, color in ipairs(self.colors) do 
 			local offset = size*(count % 4)
 			local line = 0.75 + size*math.floor(count / 4)
-			local texture = "terraform_tool_brush.png^[multiply:"..color..""
-			spec = spec..
-			"image_button["..offset..","..line..";"..size..","..size..";"..selection(texture,settings:get_string("color") == color)..";color_"..color..";]"
-
+			if quirks.is_53_plus then
+				local texture = "terraform_tool_brush.png^[multiply:"..color..""
+				spec = spec.."image_button["..offset..","..line..";"..size..","..size..";"..selection(texture,settings:get_string("color") == color)..";color_"..color..";]"
+			else
+				spec = spec.."item_image_button["..offset..","..line..";"..size..","..size..";"..minetest.formspec_escape(minetest.itemstring_with_color("terraform:brush", color))..";color_"..color..";]"
+			end
+			spec = spec.."tooltip[color_"..color..";"..color.."]"
 			count = count + 1
 		end
 
