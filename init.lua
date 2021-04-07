@@ -79,6 +79,9 @@ terraform = {
 	_tools = {},
 	_history = history,
 
+	-- Per-player flags for skipping light updates
+	skip_light = {},
+
 	-- register a terraform tool
 	register_tool = function(self, name, spec)
 		spec.tool_name = name
@@ -599,7 +602,7 @@ terraform:register_tool("brush", {
 
 		-- Save back to map, no light information
 		v:set_data(data)
-		v:write_to_map(false)
+		v:write_to_map(not terraform.skip_light[player:get_player_name()])
 	end,
 
 
@@ -918,6 +921,7 @@ local light = {
 	end,
 	add_player = function(self, player)
 		self.players[player:get_player_name()] = { player = player }
+		terraform.skip_light[player:get_player_name()] = true
 	end,
 	remove_player = function(self, player)
 		local light = self.players[player:get_player_name()]
@@ -928,6 +932,7 @@ local light = {
 			end
 		end
 		self.players[player:get_player_name()] = nil
+		terraform.skip_light[player:get_player_name()] = false
 		self:tick()
 	end,
 	tick = function(self)
