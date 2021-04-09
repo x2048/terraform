@@ -1,4 +1,4 @@
-# Terraform 
+# Terraform test
 
 A mod for [Minetest](https://www.minetest.net/).
 
