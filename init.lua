@@ -2,7 +2,7 @@
 minetest.register_privilege("terraform", "Ability to use terraform tools")
 
 local function privileged(player, f, verbose)
-	if player:get_player_name() ~= "" then
+	if player ~= nil and player:get_player_name() ~= "" then
 		if minetest.check_player_privs(player, "terraform") then
 			return f()
 		elseif verbose then
@@ -10,6 +10,12 @@ local function privileged(player, f, verbose)
 		end
 	end
 end
+
+-- Settings
+local settings = {
+	undo_history_depth = minetest.settings:get("terraform.undo_history_depth") and tonumber(minetest.settings:get("terraform.undo_history_depth")) or 100,
+	undo_for_dig_place = minetest.settings:get("terraform.undo_for_dig_place") == "true",
+}
 
 -- In-memory history/undo engine
 local history = {
@@ -28,7 +34,11 @@ local history = {
 			table.insert(capture,data[i])
 		end
 		local op = {minp = minp, maxp = maxp, data = capture}
-		table.insert(self:get_list(player:get_player_name()), op)
+		local history = self:get_list(player:get_player_name())
+		table.insert(history, op)
+		while #history > settings.undo_history_depth do
+			table.remove(history, 1)
+		end
 	end,
 
 	-- restore state of the world map from history
@@ -55,16 +65,19 @@ local history = {
 	end
 }
 
-minetest.register_on_dignode(function(pos,oldnode,player)
-	privileged(player, function()
-		history:capture(player, {minetest.get_content_id(oldnode.name)}, VoxelArea:new({MinEdge=pos,MaxEdge=pos}), pos, pos)
+if settings.undo_for_dig_place then
+	minetest.register_on_dignode(function(pos,oldnode,player)
+		privileged(player, function()
+			history:capture(player, {minetest.get_content_id(oldnode.name)}, VoxelArea:new({MinEdge=pos,MaxEdge=pos}), pos, pos)
+		end)
 	end)
-end)
-minetest.register_on_placenode(function(pos,newnode,player)
-	privileged(player, function()
-		history:capture(player, {minetest.CONTENT_AIR}, VoxelArea:new({MinEdge=pos,MaxEdge=pos}), pos, pos)
+	minetest.register_on_placenode(function(pos,newnode,player)
+		privileged(player, function()
+			history:capture(player, {minetest.CONTENT_AIR}, VoxelArea:new({MinEdge=pos,MaxEdge=pos}), pos, pos)
+		end)
 	end)
-end)
+end
+
 minetest.register_on_leaveplayer(function(player)
 	history:forget(player)
 end)

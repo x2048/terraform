@@ -1,0 +1,13 @@
+# Maximum number of entries in the undo history.
+#
+# Set to a very large number to achieve practicaly infinite undo depth,
+# but keep in mund that your server may run out of memory.
+#
+# Default: 100
+terraform.undo_history_depth (History Depth) int 100 1 2147483647
+
+# Enable/Disable Undo support for normal Dig/Place operations.
+# Terraform Brush operations always register undo actions.
+#
+# Default: Enabled
+terraform.undo_for_dig_place (Enable Dig/Place Undo) bool true
