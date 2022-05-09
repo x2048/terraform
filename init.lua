@@ -92,6 +92,9 @@ terraform = {
 	_tools = {},
 	_history = history,
 
+	-- Per-player state of the tool configuration form
+	_latest_form = {},
+
 	-- Per-player flags for skipping light updates
 	skip_light = {},
 
@@ -141,17 +144,23 @@ terraform = {
 		end
 
 		local itemstack = player:get_wielded_item()
-		self._latest_form = { id = "terraform:props:"..tool_name..math.random(1,100000), tool_name = tool_name}
+		local form = { id = "terraform:props:"..tool_name..math.random(1,100000), tool_name = tool_name}
+		self._latest_form[player:get_player_name()] = form
 		local formspec = self._tools[tool_name]:render_config(player, itemstack:get_meta())
 		if quirks.is_53_plus then
-			minetest.show_formspec(player:get_player_name(), self._latest_form.id, formspec)
+			minetest.show_formspec(player:get_player_name(), form.id, formspec)
 		else
 			self.blocked = true
 			minetest.after(0.25, function()
-				minetest.show_formspec(player:get_player_name(), self._latest_form.id, formspec)
+				minetest.show_formspec(player:get_player_name(), form.id, formspec)
 				self.blocked = false
 			end)
 		end
+	end,
+
+	forget = function(self, player)
+		self._latest_form[player:get_player_name()] = nil
+		minetest.remove_detached_inventory("terraform."..player:get_player_name())
 	end,
 
 	get_inventory = function(player)
@@ -189,8 +198,9 @@ terraform = {
 -- Handle input from forms
 minetest.register_on_player_receive_fields(function(player, formname, fields)
 	privileged(player, function()
-		if terraform._latest_form and formname == terraform._latest_form.id then
-			local tool_name = terraform._latest_form.tool_name
+		local form = terraform._latest_form[player:get_player_name()]
+		if form ~= nil and formname == form.id then
+			local tool_name = form.tool_name
 			local tool = terraform._tools[tool_name]
 			if not tool.config_input then
 				return
@@ -207,7 +217,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 			player:set_wielded_item(itemstack)
 
 			if fields.quit then
-				terraform._latest_form = nil
+				terraform._latest_form[player:get_player_name()] = nil
 				return
 			end
 
@@ -219,7 +229,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 end)
 
 minetest.register_on_leaveplayer(function(player)
-	minetest.remove_detached_inventory("terraform."..player:get_player_name())
+	terraform:forget(player)
 end)
 
 -- Tools
@@ -945,7 +955,7 @@ local light = {
 			end
 		end
 		self.players[player:get_player_name()] = nil
-		terraform.skip_light[player:get_player_name()] = false
+		terraform.skip_light[player:get_player_name()] = nil
 		self:tick()
 	end,
 	tick = function(self)
