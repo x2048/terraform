@@ -83,9 +83,47 @@ minetest.register_on_leaveplayer(function(player)
 end)
 
 -- Quirks for backward compatibility
-quirks = {
+local quirks = {
 	is_53_plus = minetest.features.object_step_has_moveresult
 }
+
+-- Per-player behavior settings and flags
+local player_settings = {
+	flags = {
+		undo_on_aux1 = { id = "uaux1", default = true }
+	}
+}
+function player_settings.get_flag(player, name)
+	return player:get_meta():get_int("terraform:"..player_settings.flags[name].id, player_settings.flags[name].default and 1 or 0 ) == 1
+end
+function player_settings.set_flag(player, name, value)
+	return player:get_meta():set_int("terraform:"..player_settings.flags[name].id, value and 1 or 0 )
+end
+function player_settings.toggle_flag(player, name)
+	local new_value = not player_settings.get_flag(player, name)
+	player_settings.set_flag(player, name, new_value)
+	return new_value
+end
+
+minetest.register_chatcommand("tf", {
+	params = "toggle <flag>",
+	description = "Toggle a behavior flag.\n"..
+		"Supported flags:\n"..
+		"  undo_on_aux1 - enable undo when using a tool with aux1",
+	privs = { terraform = true },
+	func = function(name, param)
+		local args = {}
+		for arg in param:gmatch("[^ ]+") do
+			table.insert(args, arg)
+		end
+
+		if args[1] ~= "toggle" then return false end
+		if player_settings.flags[args[2]] == nil then return false, "Unrecognized flag "..args[2] end
+
+		local new_value = player_settings.toggle_flag(minetest.get_player_by_name(name), args[2])
+		return true, new_value and "Enabled" or "Disabled"
+	end
+})
 
 -- public module API
 terraform = {
@@ -126,7 +164,7 @@ terraform = {
 			end,
 			on_place = function(itemstack, player, target)
 				return privileged(player, function()
-					if player:get_player_control().aux1 then
+					if player:get_player_control().aux1 and player_settings.get_flag(player, "undo_on_aux1") then
 						history:undo(player)
 					else
 						spec:execute(player, target, itemstack:get_meta())
